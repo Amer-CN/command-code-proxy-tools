@@ -171,6 +171,12 @@ The proxy accepts full model IDs and these short aliases:
 | `qwen-3.6-plus`, `qwen3.6-plus`, `qwen3.6` | `Qwen/Qwen3.6-Plus` |
 | `step-3.5-flash`, `step3.5` | `stepfun/Step-3.5-Flash` |
 | `gemini-3.1-flash-lite`, `gemini-flash-lite` | `google/gemini-3.1-flash-lite` |
+| `minimax-m3`, `minimax3` | `MiniMaxAI/MiniMax-M3` |
+| `qwen-3.7-max-free`, `qwen3.7-max-free` | `Qwen/Qwen3.7-Max-Free` |
+| `qwen-3.7-max`, `qwen3.7-max` | `Qwen/Qwen3.7-Max` |
+| `step-3.7-flash`, `step3.7` | `stepfun/Step-3.7-Flash` |
+| `mimo-v2.5-pro`, `mimo-pro` | `xiaomi/mimo-v2.5-pro` |
+| `mimo-v2.5`, `mimo` | `xiaomi/mimo-v2.5` |
 
 Unknown model names are passed through unchanged.
 

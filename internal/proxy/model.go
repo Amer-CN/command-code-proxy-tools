@@ -13,7 +13,7 @@ func MapModel(name string) string {
 		return "MiniMaxAI/MiniMax-M2.7"
 	case "minimax-m2.5", "minimax2.5", "minimax":
 		return "MiniMaxAI/MiniMax-M2.5"
-	case "minimax-m3", "minimax3":
+	case "MiniMaxAI/MiniMax-M3", "minimax-m3", "minimax3":
 		return "MiniMaxAI/MiniMax-M3"
 	case "glm-5.1":
 		return "zai-org/GLM-5.1"
@@ -29,17 +29,17 @@ func MapModel(name string) string {
 		return "Qwen/Qwen3.6-Plus"
 	case "step-3.5-flash", "step3.5":
 		return "stepfun/Step-3.5-Flash"
-	case "step-3.7-flash", "step3.7":
+	case "step-3.7-flash", "step3.7", "stepfun/Step-3.7-Flash":
 		return "stepfun/Step-3.7-Flash"
 	case "gemini-3.1-flash-lite", "gemini-flash-lite":
 		return "google/gemini-3.1-flash-lite"
-	case "qwen-3.7-max-free", "qwen3.7-max-free":
+	case "qwen-3.7-max-free", "qwen3.7-max-free", "Qwen/Qwen3.7-Max-Free":
 		return "Qwen/Qwen3.7-Max-Free"
-	case "qwen-3.7-max", "qwen3.7-max":
+	case "qwen-3.7-max", "qwen3.7-max", "Qwen/Qwen3.7-Max":
 		return "Qwen/Qwen3.7-Max"
-	case "mimo-v2.5-pro":
+	case "mimo-v2.5-pro", "mimo-pro", "xiaomi/mimo-v2.5-pro":
 		return "xiaomi/mimo-v2.5-pro"
-	case "mimo-v2.5":
+	case "mimo-v2.5", "mimo", "xiaomi/mimo-v2.5":
 		return "xiaomi/mimo-v2.5"
 	default:
 		return name // pass through as-is
