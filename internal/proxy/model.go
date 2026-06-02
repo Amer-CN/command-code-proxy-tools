@@ -13,6 +13,8 @@ func MapModel(name string) string {
 		return "MiniMaxAI/MiniMax-M2.7"
 	case "minimax-m2.5", "minimax2.5", "minimax":
 		return "MiniMaxAI/MiniMax-M2.5"
+	case "minimax-m3", "minimax3":
+		return "MiniMaxAI/MiniMax-M3"
 	case "glm-5.1":
 		return "zai-org/GLM-5.1"
 	case "glm-5":
