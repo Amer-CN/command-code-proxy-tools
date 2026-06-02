@@ -27,8 +27,18 @@ func MapModel(name string) string {
 		return "Qwen/Qwen3.6-Plus"
 	case "step-3.5-flash", "step3.5":
 		return "stepfun/Step-3.5-Flash"
+	case "step-3.7-flash", "step3.7":
+		return "stepfun/Step-3.7-Flash"
 	case "gemini-3.1-flash-lite", "gemini-flash-lite":
 		return "google/gemini-3.1-flash-lite"
+	case "qwen-3.7-max-free", "qwen3.7-max-free":
+		return "Qwen/Qwen3.7-Max-Free"
+	case "qwen-3.7-max", "qwen3.7-max":
+		return "Qwen/Qwen3.7-Max"
+	case "mimo-v2.5-pro":
+		return "xiaomi/mimo-v2.5-pro"
+	case "mimo-v2.5":
+		return "xiaomi/mimo-v2.5"
 	default:
 		return name // pass through as-is
 	}
