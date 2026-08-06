@@ -1,0 +1,38 @@
+CommandCode 代理使用说明
+========================
+
+这个文件夹里是 command-code-proxy-server（本地代理）加上便捷工具。
+代理的作用：把官方只对"Provider 套餐"开放的接口，转成本地接口
+http://127.0.0.1:55990/v1 —— 它实际走的是 CommandCode CLI 的接口
+(/alpha/generate)，所以普通套餐也能用，并且能调用下面这些模型
+（Kimi、GLM、MiniMax、DeepSeek、Qwen、StepFun、小米MiMo、Gemini 等 17 个）。
+
+文件清单：
+- CommandCode代理-单文件版.hta   ★ 单文件版：双击即用，自动释放内置代理组件并启动
+- CommandCode控制台.hta          多文件版控制台（依赖 bin 下的 exe）
+- 启动代理.bat / 停止代理.bat   命令行启停
+- 设置开机自启.bat / 取消开机自启.bat  开机自动后台运行
+- bin\command-code-proxy.exe    代理本体（预编译，无需安装 Go）
+- 生成单文件版.py / hta_template.txt   重新打包单文件版用的构建工具
+
+日常使用（单文件版）：
+1. 双击 CommandCode代理-单文件版.hta
+2. 首次打开会自动释放内置组件（约 10~60 秒），随后自动启动代理，状态变绿
+3. 在任意 Agent / 客户端中配置：
+   Base URL : http://127.0.0.1:55990/v1
+   API Key  : 你在 CommandCode Studio 生成的 Key
+   （或者把 Key 填进控制台输入一次，代理会记住，见 api-key.txt）
+4. 模型名可填：deepseek-v4-pro / kimi-k2.6 / glm-5.1 / qwen-3.6-max / gemini-3.1-flash-lite 等
+
+杀毒软件提示（重要）：
+- 单文件版"内嵌可执行文件"、开机自启脚本"写入启动项"这两个特征
+  会被火绒/360 等杀软判定为可疑。首次使用若被杀软询问，选择"允许/信任"；
+  若文件被直接清理，请把本文件夹加入杀软的"信任区/白名单"后重新生成。
+- 发给别人时，对方机器同样可能拦截，请一并告知对方。
+
+常见问题：
+- 停止代理后客户端连不上：正常，重启代理即可。
+- 端口被占用：检查是否已启动过一次，或在任务管理器结束 command-code-proxy.exe。
+- 换电脑 / 移动文件夹：整个文件夹拷走即可，无需重装；
+  单文件版会自动在当前位置释放组件。
+- 仅支持 Windows；文件夹路径建议不要包含空格。

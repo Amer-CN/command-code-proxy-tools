@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>CommandCode 代理控制台</title>
+<hta:application id="ccConsole"
+  applicationname="CommandCode Proxy Console"
+  scroll="auto" border="thick" caption="yes" showintaskbar="yes"
+  maximizebutton="yes" minimizebutton="yes"
+  icon="bin\command-code-proxy.exe" />
+<style>
+  body { margin:0; padding:18px 22px; font-family:"Microsoft YaHei","Segoe UI",sans-serif; font-size:14px;
+         background:#0f1420; color:#dde3ee; }
+  h1 { font-size:18px; margin:0 0 12px 0; color:#fff; }
+  #statusbar { background:#161d2e; border:1px solid #24304a; border-radius:8px;
+               padding:10px 14px; margin-bottom:14px; }
+  .dot { display:inline-block; width:11px; height:11px; border-radius:50%; margin-right:8px; vertical-align:middle; }
+  .dot.green { background:#22c55e; box-shadow:0 0 6px #22c55e; }
+  .dot.gray  { background:#64748b; }
+  .dot.red   { background:#ef4444; box-shadow:0 0 6px #ef4444; }
+  .row { margin-bottom:10px; }
+  .label { display:inline-block; width:125px; color:#8fa3c8; vertical-align:middle; }
+  input[type=text], input[type=password] { display:inline-block; width:58%; background:#161d2e; color:#e2e8f0;
+         border:1px solid #2a3a5c; border-radius:6px; padding:8px 10px; vertical-align:middle; }
+  button { background:#24304a; color:#e2e8f0; border:1px solid #33456e; border-radius:6px;
+           padding:8px 14px; cursor:pointer; }
+  button:hover { background:#2e3d61; }
+  button.primary { background:#1d6df0; border-color:#1d6df0; font-weight:bold; }
+  button.primary:hover { background:#2c7cf5; }
+  button.danger { background:#7c2626; border-color:#a33; }
+  button.danger:hover { background:#943030; }
+  .btns { margin:14px 0; }
+  .btns button { margin:0 10px 8px 0; }
+  .section-title { color:#8fa3c8; margin:16px 0 8px 0; font-size:13px; }
+  #modelList { padding-bottom:6px; }
+  .chip { display:inline-block; background:#161d2e; border:1px solid #2a3a5c; border-radius:14px;
+          padding:5px 12px; margin:3px 5px; font-size:12px; cursor:pointer; color:#a8c0e8; }
+  .chip:hover { background:#24304a; border-color:#3d5a99; }
+  #log { background:#0a0e18; border:1px solid #1d2740; border-radius:8px; padding:10px;
+         font-family:Consolas,monospace; font-size:12px; color:#7f93b8; height:110px;
+         overflow-y:auto; margin-top:14px; }
+  .tip { margin-top:12px; font-size:12px; color:#5f7298; line-height:1.8; }
+</style>
+</head>
+<body>
+<h1>CommandCode 代理控制台</h1>
+<div id="statusbar">
+  <span id="dot" class="dot gray"></span>
+  <span id="statusText">正在检测…</span>
+</div>
+
+<div class="row">
+  <span class="label">Base URL</span>
+  <input type="text" id="baseUrl" readonly value="http://127.0.0.1:55990/v1">
+  <button onclick="copyText('baseUrl')">复制</button>
+</div>
+<div class="row">
+  <span class="label">API Key（可选）</span>
+  <input type="password" id="apiKey" placeholder="不填则使用客户端自己发送的 Key">
+  <button onclick="toggleKey()">显示</button>
+</div>
+
+<div class="btns">
+  <button class="primary" onclick="startProxy()">&#9654; 启动代理</button>
+  <button class="danger" onclick="stopProxy()">&#9632; 停止代理</button>
+  <button onclick="refreshNow()">&#8635; 刷新状态</button>
+</div>
+
+<div class="section-title">可用模型（点击复制模型名）— 全部走你 CommandCode 套餐</div>
+<div id="modelList">代理未运行时无法获取</div>
+
+<div id="log"></div>
+
+<div class="tip">
+  使用步骤：<br>
+  1. 点「启动代理」（或双击 启动代理.bat）→ 状态变绿即成功。<br>
+  2. 在任意 Agent / 客户端里：Base URL 填 http://127.0.0.1:55990/v1，API Key 填 CommandCode Studio 里生成的 Key。<br>
+  3. 不想每次填 Key，就在上方输入一次，点「启动代理」时会记住（保存在本目录 api-key.txt，仅本机明文）。<br>
+  4. 「停止代理」后客户端会暂时连不上，属正常现象，随时再启动即可。<br>
+  5. 想开机自动运行：双击 设置开机自启.bat（取消用 取消开机自启.bat）。
+</div>
+
+<script language="JScript">
+var shell = new ActiveXObject("WScript.Shell");
+var fso = new ActiveXObject("Scripting.FileSystemObject");
+
+// 解析本文件所在目录（file:///F:/AIXM/command/xxx.hta -> F:\AIXM\command）
+var loc = decodeURIComponent(String(window.location)).replace(/^file:\/\/\//, "").replace(/\//g, "\\");
+var here = fso.GetParentFolderName(loc);
+var exePath = here + "\\bin\\command-code-proxy.exe";
+var keyFile = here + "\\api-key.txt";
+
+var HEALTH = "http://127.0.0.1:55990/health";
+var MODELS = "http://127.0.0.1:55990/v1/models";
+
+function httpGet(url) {
+  try {
+    var x = new ActiveXObject("MSXML2.XMLHTTP");
+    x.open("GET", url, false);
+    x.send();
+    return (x.status == 200) ? x.responseText : null;
+  } catch (e) { return null; }
+}
+
+function isRunning() { return httpGet(HEALTH) != null; }
+
+function log(msg) {
+  var el = document.getElementById("log");
+  el.innerHTML = new Date().toLocaleTimeString() + "  " + msg + "<br>" + el.innerHTML;
+}
+
+function copyText(id) {
+  var v = document.getElementById(id).value;
+  window.clipboardData.setData("Text", v);
+  log("已复制: " + v);
+}
+
+function copyModel(name) {
+  window.clipboardData.setData("Text", name);
+  log("已复制模型名: " + name);
+}
+
+function toggleKey() {
+  var k = document.getElementById("apiKey");
+  k.type = (k.type == "password") ? "text" : "password";
+}
+
+function refresh() {
+  var running = isRunning();
+  var dot = document.getElementById("dot");
+  var st = document.getElementById("statusText");
+  if (running) {
+    dot.className = "dot green";
+    st.innerHTML = "运行中 · http://127.0.0.1:55990 可用";
+    loadModels();
+  } else {
+    dot.className = "dot gray";
+    st.innerHTML = "未运行 · 点击「启动代理」";
+    document.getElementById("modelList").innerHTML = "代理未运行时无法获取";
+  }
+}
+
+function loadModels() {
+  var txt = httpGet(MODELS);
+  if (!txt) return;
+  var list, i, html = "";
+  try { list = eval("(" + txt + ")").data; } catch (e) { return; }
+  for (i = 0; i < list.length; i++) {
+    html += '<span class="chip" onclick="copyModel(\'' + list[i].id + '\')">' + list[i].id + "</span>";
+  }
+  document.getElementById("modelList").innerHTML = html;
+}
+
+function startProxy() {
+  if (isRunning()) { log("代理已经在运行"); refresh(); return; }
+  var key = document.getElementById("apiKey").value;
+  var cmd = '"' + exePath + '" -port 55990';
+  if (key != "") {
+    cmd += ' -api-key "' + key.replace(/"/g, '""') + '"';
+    try {
+      var f = fso.CreateTextFile(keyFile, true);
+      f.Write(key);
+      f.Close();
+      log("API Key 已保存到 api-key.txt");
+    } catch (e) {}
+  }
+  try {
+    shell.Run(cmd, 0, false);  // 0 = 隐藏窗口后台运行
+    log("已启动（后台运行），状态即将自动更新…");
+  } catch (e) {
+    log("启动失败: " + e.message);
+  }
+  setTimeout("refresh()", 1500);
+}
+
+function stopProxy() {
+  try {
+    shell.Run("taskkill /F /IM command-code-proxy.exe", 0, true);
+    log("已发送停止命令");
+  } catch (e) {
+    log("停止失败: " + e.message);
+  }
+  setTimeout("refresh()", 1000);
+}
+
+(function init() {
+  window.resizeTo(560, 780);  // 初始窗口大小（可拖拽调整/最大化）
+  try {
+    if (fso.FileExists(keyFile)) {
+      var f = fso.OpenTextFile(keyFile, 1);
+      document.getElementById("apiKey").value = f.ReadAll();
+      f.Close();
+    }
+  } catch (e) {}
+  refresh();
+  setInterval("refresh()", 3000);
+})();
+</script>
+</body>
+</html>
