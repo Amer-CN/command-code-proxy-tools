@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -86,7 +87,7 @@ func (p *Proxy) HandleUsage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var sum usageSummary
-	// 1. whoami -> org id
+	// 1. whoami -> org id（个人账号 org 为 null，此时所有 /alpha/ 接口无参直调）
 	whoamiRaw, _, err := get("/alpha/whoami", nil)
 	if err != nil {
 		sum.Errors = append(sum.Errors, err.Error())
@@ -96,7 +97,7 @@ func (p *Proxy) HandleUsage(w http.ResponseWriter, r *http.Request) {
 	}
 	sum.Whoami = whoamiRaw
 	var whoami struct {
-		Org struct {
+		Org *struct {
 			ID    string `json:"id"`
 			Login string `json:"login"`
 		} `json:"org"`
@@ -105,25 +106,36 @@ func (p *Proxy) HandleUsage(w http.ResponseWriter, r *http.Request) {
 		} `json:"user"`
 	}
 	_ = json.Unmarshal(whoamiRaw, &whoami)
-	orgID := whoami.Org.ID
-	if orgID == "" {
-		sum.Errors = append(sum.Errors, "no org id in whoami")
-		p.writeJSON(w, sum)
-		return
+	orgID := ""
+	if whoami.Org != nil {
+		orgID = whoami.Org.ID
+	}
+
+	// params：有 org 的组织账号传 orgId，个人账号不传（直调）。
+	params := func() map[string]string {
+		if orgID != "" {
+			return map[string]string{"orgId": orgID}
+		}
+		return nil
 	}
 
 	// 2. credits
-	creditsRaw, _, err := get("/alpha/billing/credits", map[string]string{"orgId": orgID})
+	creditsRaw, _, err := get("/alpha/billing/credits", params())
 	if err == nil {
 		sum.Credits = creditsRaw
 	}
 	// 3. subscription
-	subRaw, _, err := get("/alpha/billing/subscriptions", map[string]string{"orgId": orgID})
+	subRaw, _, err := get("/alpha/billing/subscriptions", params())
 	if err == nil {
 		sum.Sub = subRaw
 	}
 
-	// 4. usage summary since period start
+	// 4. usage summary（个人账号无参直调返回本账单周期汇总）
+	summaryRaw, _, err := get("/alpha/usage/summary", params())
+	if err == nil {
+		sum.Summary = summaryRaw
+	}
+	// 计划信息（planId / 周期结束）
 	var sub struct {
 		Data struct {
 			PlanID             string `json:"planId"`
@@ -135,14 +147,18 @@ func (p *Proxy) HandleUsage(w http.ResponseWriter, r *http.Request) {
 	if sum.Sub != nil {
 		_ = json.Unmarshal(sum.Sub, &sub)
 	}
-	var summaryRaw []byte
-	if sub.Data.CurrentPeriodStart != "" {
-		summaryRaw, _, err = get("/alpha/usage/summary", map[string]string{"orgId": orgID, "since": sub.Data.CurrentPeriodStart})
-		if err == nil {
-			sum.Summary = summaryRaw
-		}
+	// summary：账单周期权威汇总（个人账号无参直调同样可用）
+	var summary struct {
+		TotalCost      float64 `json:"totalCost"`
+		TotalCount     int64   `json:"totalCount"`
+		TotalTokens    int64   `json:"totalTokens"`
+		TotalTokensIn  int64   `json:"totalTokensIn"`
+		TotalTokensOut int64   `json:"totalTokensOut"`
 	}
-	// aggregate credits
+	if sum.Summary != nil {
+		_ = json.Unmarshal(sum.Summary, &summary)
+	}
+	// credits 汇总
 	var credits struct {
 		Credits struct {
 			MonthlyCredits   float64 `json:"monthlyCredits"`
@@ -152,13 +168,6 @@ func (p *Proxy) HandleUsage(w http.ResponseWriter, r *http.Request) {
 	}
 	if sum.Credits != nil {
 		_ = json.Unmarshal(sum.Credits, &credits)
-	}
-	// total cost
-	var summary struct {
-		TotalCost float64 `json:"totalCost"`
-	}
-	if sum.Summary != nil {
-		_ = json.Unmarshal(sum.Summary, &summary)
 	}
 	sum.PlanID = sub.Data.PlanID
 	sum.PlanLabel = planLabel(sub.Data.PlanID)
@@ -178,38 +187,36 @@ func (p *Proxy) HandleUsage(w http.ResponseWriter, r *http.Request) {
 	}
 	sum.UsageURL = "https://commandcode.ai/usage"
 
-	// 5. recent usage records list (/internal/usage) — same call the official
-	// Usage page makes. Returns items with per-request tokens/cost/model/status.
-	// 拉大 limit 以便前端按模型/日期聚合（一次最多 500 条）。
-	limit := r.URL.Query().Get("limit")
-	if limit == "" {
-		limit = "500"
-	}
-	listParams := map[string]string{"limit": limit, "orgId": orgID}
-	if c := r.URL.Query().Get("cursor"); c != "" {
-		listParams["cursor"] = c
-	}
-	if listRaw, _, err := get("/internal/usage", listParams); err == nil {
-		var list struct {
-			Items  json.RawMessage `json:"items"`
-			Cursor string          `json:"cursor"`
-			Total  struct {
-				TotalTokens int64 `json:"totalTokens"`
-				TotalRuns   int64 `json:"totalRuns"`
-				TokensIn    int64 `json:"tokensIn"`
-				TokensOut   int64 `json:"tokensOut"`
-			} `json:"total"`
+	// 官方权威 token 汇总（/alpha/usage/summary，个人账号无需 orgId）
+	sum.CostUSD = summary.TotalCost
+	sum.TotalTokens = summary.TotalTokens
+	sum.TotalRuns = summary.TotalCount
+	sum.TokensIn = summary.TotalTokensIn
+	sum.TokensOut = summary.TotalTokensOut
+
+	// 5. 明细列表（/internal/usage，网页 cookie 会话接口）：
+	// 仅组织账号可拉；失败不影响上面的官网汇总（不追加 errors）。
+	if orgID != "" {
+		limit := r.URL.Query().Get("limit")
+		if limit == "" {
+			limit = "500"
 		}
-		if uerr := json.Unmarshal(listRaw, &list); uerr == nil {
-			sum.Items = list.Items
-			sum.ListCursor = list.Cursor
-			sum.TotalTokens = list.Total.TotalTokens
-			sum.TotalRuns = list.Total.TotalRuns
-			sum.TokensIn = list.Total.TokensIn
-			sum.TokensOut = list.Total.TokensOut
-			// 结构化 items：按模型聚合 + 今日聚合（防御式解析，字段缺失即忽略）
-			sum.ModelBreakdown = modelBreakdown(list.Items)
-			sum.TodayTokens = todayTokens(list.Items)
+		listParams := map[string]string{"limit": limit, "orgId": orgID}
+		if c := r.URL.Query().Get("cursor"); c != "" {
+			listParams["cursor"] = c
+		}
+		if listRaw, _, err := get("/internal/usage", listParams); err == nil {
+			var list struct {
+				Items  json.RawMessage `json:"items"`
+				Cursor string          `json:"cursor"`
+			}
+			if uerr := json.Unmarshal(listRaw, &list); uerr == nil {
+				sum.Items = list.Items
+				sum.ListCursor = list.Cursor
+				// 结构化 items：按模型聚合 + 今日聚合（防御式解析，字段缺失即忽略）
+				sum.ModelBreakdown = modelBreakdown(list.Items)
+				sum.TodayTokens = todayTokens(list.Items)
+			}
 		}
 	}
 
@@ -308,10 +315,12 @@ func (p *Proxy) writeJSON(w http.ResponseWriter, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 
+// trimBearer 去掉可选的 "Bearer " 前缀。注意：不能对 key 做大小写规范化
+// （http.CanonicalHeaderKey 会把 user_ 前缀大写成 User_，破坏 key）。
 func trimBearer(key string) string {
-	key = http.CanonicalHeaderKey(key)
-	if len(key) > 6 && key[:6] == "Bearer" {
-		key = key[7:]
+	key = strings.TrimSpace(key)
+	if len(key) > 7 && strings.EqualFold(key[:7], "Bearer ") {
+		key = strings.TrimSpace(key[7:])
 	}
 	return key
 }

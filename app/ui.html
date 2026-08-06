@@ -695,18 +695,32 @@ async function refreshStats(){
     && !(u.errors && u.errors.length > 0)
     && (u.totalTokens > 0 || u.costUSD > 0 || u.totalRuns > 0));
   if (official){
+    // 本地统计始终拉取，用于官网没有的部分（今日明细、按模型拆分）兜底
+    let d = null;
+    try { d = await call("Stats"); } catch(e){}
+    const ltotal = (d&&d.total)||{}, ltoday = (d&&d.today)||{};
     $("statCost").textContent = "$" + (u.costUSD||0).toFixed(4);
     const cr = u.creditsAvailable||0, pct = u.percentUsed||0;
     $("statCostSub").textContent = (cr>0 ? `官网账单 · 可用 $${cr.toFixed(2)} · 已用 ${pct.toFixed(1)}%` : "官网账单");
     countUp($("statTotal"), u.totalTokens||0);
     $("statTotalSub").textContent = `↑${fmt(u.tokensIn||0)} / ↓${fmt(u.tokensOut||0)} · 官网`;
-    countUp($("statToday"), u.todayTokens||0);
-    $("statTodaySub").textContent = "今日（官网明细）";
+    const todayN = u.todayTokens || ltoday.total || 0;
+    countUp($("statToday"), todayN);
+    $("statTodaySub").textContent = u.todayTokens ? "今日（官网明细）" : (ltoday.total ? `↑${fmt(ltoday.input)} / ↓${fmt(ltoday.output)} · 本地` : "今日");
     countUp($("statRuns"), u.totalRuns||0);
     $("statModels").textContent = (u.planLabel||"未命名计划") + (u.daysLeft ? ` · 剩 ${u.daysLeft} 天` : "");
     const mb = u.modelBreakdown || {};
     const mkeys = Object.keys(mb);
-    if (!mkeys.length){ wrap.innerHTML = '<div class="bars-empty">// 官网暂无明细数据</div>'; return; }
+    if (!mkeys.length){
+      // 官网无明细（个人账号）→ 模型条用本地统计兜底
+      if (d && (d.models||{}) && Object.keys(d.models).length){
+        const models = d.models;
+        const calibrated = d.calibrated || {};
+        renderBars(Object.keys(models).map(k=>({name:k, ...models[k],
+          sum:(models[k].inputTokens||0)+(models[k].outputTokens||0)+(models[k].cacheReadTokens||0)})), true, calibrated);
+      } else { wrap.innerHTML = '<div class="bars-empty">// 官网无明细 · 暂无本地数据</div>'; }
+      return;
+    }
     renderBars(mkeys.map(k=>({name:k, ...mb[k],
       sum:(mb[k].in||0)+(mb[k].out||0)+(mb[k].cacheRead||0)})), false);
     return;
