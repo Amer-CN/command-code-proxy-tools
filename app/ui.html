@@ -698,16 +698,10 @@ async function refreshStats(){
   // 金额估算（官方单价 × 本地 token）
   const cost = d.cost || 0;
   $("statCost").textContent = "$" + cost.toFixed(4);
-  // 校准：每模型官网 Token（来自 calibration.json）
-  const calibMap = (d.calibration && d.calibration.models) || {};
-  S.calibMap = calibMap;
-  const calibTotal = Object.values(calibMap).reduce((s,v)=>s+(v||0),0);
-  if (calibTotal > 0){
-    const diff = calibTotal - (total.total||0);
-    $("statCostSub").textContent = "官网校准 " + fmt(calibTotal) + " · 差 " + (diff>=0?"+":"") + fmt(diff) + " tok";
-  } else {
-    $("statCostSub").textContent = "按官方单价估算";
-  }
+  // 校准：覆盖式——有校准的模型已被官网值覆盖（后端已处理），这里只显示标记
+  const calibrated = d.calibrated || {};
+  const calibNames = Object.keys(calibrated).filter(k=>calibrated[k]);
+  $("statCostSub").textContent = calibNames.length ? "已用官网校准 " + calibNames.length + " 个模型" : "按官方单价估算";
   if (!names.length){ wrap.innerHTML = '<div class="bars-empty">// 暂无数据 · 跑几轮对话后点刷新</div>'; return; }
   const sorted = names.map(k=>({name:k, ...models[k], sum:(models[k].inputTokens||0)+(models[k].outputTokens||0)}))
                       .sort((a,b)=>b.sum-a.sum).slice(0,9);
@@ -716,10 +710,10 @@ async function refreshStats(){
   sorted.forEach((m,i)=>{
     const row = document.createElement("div");
     row.className = "bar-row calib-row"; row.style.animationDelay = (i*55)+"ms";
-    row.style.cursor = "pointer"; row.title = "点击校准该模型（填官网 Token 数）";
+    row.style.cursor = "pointer"; row.title = "点击校准该模型（填官网 Token 数，覆盖本地）";
     const c = vendorColor(m.name);
-    const official = calibMap[m.name];
-    const diffTxt = official ? ` 官网${fmt(official)} 差${official-m.sum>=0?"+":""}${fmt(official-m.sum)}` : "";
+    const isCal = calibrated[m.name];
+    const diffTxt = isCal ? ` <span style="color:#7dffb0">✓已校准</span>` : "";
     row.innerHTML = `<span class="name"></span>
       <div class="bar-track"><div class="bar-fill" style="background:linear-gradient(90deg,${c},${c}88);box-shadow:0 0 10px ${c}55"></div></div>
       <span class="val">${fmt(m.sum)}${diffTxt}</span>`;
@@ -730,10 +724,9 @@ async function refreshStats(){
   });
 }
 
-// 点击模型条 → 弹输入框校准该模型官网 Token 数（留空=清除）
+// 点击模型条 → 弹输入框校准该模型（填官网 Token 数，覆盖本地；留空=清除校准）
 function calibModel(model){
-  const cur = (S.calibMap && S.calibMap[model]) || "";
-  const v = prompt("校准 " + model + "\n填官网该模型的总 Token 数（留空=清除校准）：", cur ? String(cur) : "");
+  const v = prompt("校准 " + model + "\n填官网该模型的总 Token 数（覆盖本地统计；留空=清除校准）：", "");
   if (v === null) return;
   call("Calib", model, v.trim()).then(r=>{
     if (r && r.ok){ log("ok", model + " 校准已保存"); toast("ok","校准已保存", model); refreshStats(); }

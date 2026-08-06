@@ -144,6 +144,24 @@ func (p *Proxy) HandleStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	snap := p.Stats.Snapshot()
+
+	// 覆盖式校准：有校准的模型，其本地总 token 被官网值覆盖（以后新请求继续累加）。
+	calib := p.calibration()
+	calibrated := map[string]bool{}
+	for name, official := range calib {
+		if ms, ok := snap.Models[name]; ok && official > 0 {
+			// 保持本地输入/输出比例，把总和缩放到官网值
+			sum := ms.InputTokens + ms.OutputTokens
+			if sum > 0 {
+				ms.InputTokens = ms.InputTokens * official / sum
+				ms.OutputTokens = official - ms.InputTokens
+			} else {
+				ms.InputTokens = official
+			}
+			calibrated[name] = true
+		}
+	}
+
 	todayIn, todayOut := p.Stats.Today()
 	var totalIn, totalOut int64
 	for _, ms := range snap.Models {
@@ -154,9 +172,6 @@ func (p *Proxy) HandleStats(w http.ResponseWriter, r *http.Request) {
 	// 金额估算（官方定价 per 1M tokens，USD；无价格的模型按 0 计）
 	cost := estimateCost(snap.Models)
 
-	// 按模型的校准值（用户从官网读取后填入，保存到 calibration.json）
-	calib := p.calibration()
-
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"started":   snap.Started,
@@ -164,10 +179,8 @@ func (p *Proxy) HandleStats(w http.ResponseWriter, r *http.Request) {
 		"total":     map[string]int64{"input": totalIn, "output": totalOut, "total": totalIn + totalOut},
 		"today":     map[string]int64{"input": todayIn, "output": todayOut, "total": todayIn + todayOut},
 		"statsFile": filepath.Base(p.Stats.file),
-		"cost":      cost, // 估算金额（按官方单价 × 本地 token）
-		"calibration": map[string]any{
-			"models": calib, // 每模型官网校准 token {模型: token}
-		},
+		"cost":       cost, // 估算金额（按官方单价 × 本地 token）
+		"calibrated": calibrated, // 哪些模型被官网校准覆盖
 	})
 }
 
