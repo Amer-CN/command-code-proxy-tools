@@ -426,6 +426,12 @@ body{
     <button class="ibtn" id="avDismiss">知道了，不再提示</button>
   </div>
 
+  <!-- 关窗提示（首次） -->
+  <div class="av-banner" id="closeBanner" style="display:none">
+    <b>💡 关于关闭窗口</b>：代理以独立后台进程运行，<b>关闭本窗口不会停止代理</b>——你的客户端（Codex 等）会继续正常使用。需要停止代理时，重新打开本工具，点击能量核心停堆即可。
+    <button class="ibtn" id="closeDismiss">知道了</button>
+  </div>
+
   <!-- 主区 -->
   <main class="deck">
     <!-- 反应堆 -->
@@ -752,6 +758,7 @@ async function pollState(){
   if (st.autostart !== S.autostart){ S.autostart = st.autostart; renderAutostart(); }
   if (st.apiKey && !$("apiKey").dataset.touched && !$("apiKey").value){ $("apiKey").value = st.apiKey; }
   if (st.noticeDismissed === false){ $("avBanner").style.display = "block"; }
+  if (st.closeHintDismissed === false){ $("closeBanner").style.display = "block"; }
 }
 setInterval(()=>{ if (S.phase==="running"||S.phase==="external"){ S.uptime++; } $("uptimeV").textContent = fmtUptime(S.uptime); }, 1000);
 setInterval(pollState, 2500);
@@ -777,6 +784,7 @@ $("refreshStats").onclick = ()=>{ refreshStats(); log("sys","手动刷��链�
 $("openUsage").onclick = ()=>{ call("Open","https://commandcode.ai/settings/usage"); log("net","已在浏览器打开官方用量页"); };
 $("clearLog").onclick = ()=>{ logStream.innerHTML=""; log("sys","日志已清空"); };
 $("avDismiss").onclick = ()=>{ $("avBanner").style.display="none"; call("Dismiss"); log("sys","已关闭安全提示（不再显示）"); };
+$("closeDismiss").onclick = ()=>{ $("closeBanner").style.display="none"; call("DismissCloseHint"); log("sys","已关闭关窗提示（不再显示）"); };
 $("reactor").onclick = toggleCore;
 document.addEventListener("keydown", e=>{ if (e.code==="Space" && !e.target.matches("input")) { e.preventDefault(); toggleCore(); } });
 

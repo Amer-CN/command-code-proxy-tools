@@ -97,7 +97,8 @@ func main() {
 	w.SetTitle(appTitle)
 	w.SetSize(1280, 800, webview.HintNone)
 	defer w.Destroy()
-	defer func() { _, _ = app.stop() }() // 关窗时优雅停堆
+	// 注意：代理以独立 headless 子进程常驻，关窗不停止代理。
+	// 需要停代理时，在界面里点能量核心停堆即可。
 
 	// 深色标题栏（Win10 1809+，尽力而为，失败无碍）
 	if hwnd := w.Window(); hwnd != nil {

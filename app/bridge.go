@@ -3,7 +3,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -19,8 +18,6 @@ import (
 	"time"
 
 	"github.com/atotto/clipboard"
-	"github.com/dev2k6/command-code-proxy-server/internal/proxy"
-	"github.com/dev2k6/command-code-proxy-server/internal/server"
 	webview "github.com/webview/webview_go"
 )
 
@@ -51,6 +48,7 @@ func newApp(host, port, key string) *app {
 func (a *app) keyFile() string    { return filepath.Join(exeDir(), "api-key.txt") }
 func (a *app) statsFile() string  { return filepath.Join(exeDir(), "stats.json") }
 func (a *app) noticeFile() string { return filepath.Join(exeDir(), "notice_dismissed.flag") }
+func (a *app) closeHintFile() string { return filepath.Join(exeDir(), "close_hint_dismissed.flag") }
 func (a *app) baseURL() string    { return "http://" + net.JoinHostPort(a.host, a.port) }
 func (a *app) healthURL() string  { return a.baseURL() + "/health" }
 
@@ -76,81 +74,83 @@ func (a *app) migrateLegacyStats() {
 	_, _ = io.Copy(out, in)
 }
 
-// start 进程内点火。返回 (提示语, error)；若端口上已有健康的外部实例，
-// 返回 ("EXTERNAL:...", nil) 并进入 external 观察态。
+// start 启动代理。代理以 headless 子进程常驻（独立于本 GUI 进程），
+// 因此关闭窗口不影响代理；再次打开 GUI 时探活识别为"运行中"。
 func (a *app) start(key string) (string, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
-	if a.running {
-		return "代理核心已在运行", nil
-	}
 	if key == "" {
 		key = a.apiKey
 	}
-	// 端口已被健康代理占用 → 直接接管观察（通常是开机自启的后台实例）。
-	// 提示用户：点击能量核心可停止外部实例并接管。
-	if httpOK(a.healthURL()) {
-		a.external = true
-		return "检测到 " + a.baseURL() + " 已有后台代理在运行。点击能量核心可停止它并接管；或继续使用现有后台实例", nil
-	}
-
-	a.migrateLegacyStats()
-	p := proxy.NewProxy(key)
-	p.SetStatsFile(a.statsFile())
-	srv := server.NewServer(p)
-
-	ln, err := net.Listen("tcp", net.JoinHostPort(a.host, a.port))
-	if err != nil {
-		return "", fmt.Errorf("端口 %s 被其他程序占用，无法点火（可换个目录或端口重试）", a.port)
-	}
-	a.httpd = &http.Server{Handler: srv.Handler, ReadHeaderTimeout: 30 * time.Second}
-	go func() {
-		if e := a.httpd.Serve(ln); e != nil && !errors.Is(e, http.ErrServerClosed) {
-			a.mu.Lock()
-			a.lastErr = e.Error()
-			a.running = false
-			a.mu.Unlock()
-		}
-	}()
-	a.running = true
-	a.external = false
-	a.started = time.Now()
-	a.lastErr = ""
 	if key != "" {
 		a.apiKey = key
 		_ = os.WriteFile(a.keyFile(), []byte(key), 0o600)
 	}
-	return "点火成功 · " + a.baseURL() + " 已就绪", nil
+
+	// 端口已有健康代理（可能是上次遗留的 headless 子进程）→ 直接接管观察。
+	if httpOK(a.healthURL()) {
+		a.running = true
+		a.external = false
+		a.started = time.Now()
+		a.lastErr = ""
+		return "检测到 " + a.baseURL() + " 代理已在运行，已接入", nil
+	}
+
+	// 启动 headless 子进程（同一 exe，-headless 参数），代理独立常驻。
+	exe, err := os.Executable()
+	if err != nil {
+		return "", fmt.Errorf("无法定位自身可执行文件: %v", err)
+	}
+	cmd := exec.Command(exe, "-headless")
+	if key != "" {
+		cmd.Args = append(cmd.Args, "-api-key", key)
+	}
+	if err := cmd.Start(); err != nil {
+		return "", fmt.Errorf("启动后台代理失败: %v", err)
+	}
+
+	// 等待代理就绪（最多 ~5s）
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if httpOK(a.healthURL()) {
+			a.running = true
+			a.external = false
+			a.started = time.Now()
+			a.lastErr = ""
+			return "点火成功 · " + a.baseURL() + " 已就绪（后台常驻，关窗不影响）", nil
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+	return "", fmt.Errorf("后台代理启动超时，请检查端口 %s 是否被占用", a.port)
 }
 
-// stop 停堆；external 态下改为结束占用端口的外部进程。
+// stop 停堆：探活 → 若有代理在跑（无论是不是本进程起的 headless 子进程），
+// 结束占用端口的进程。本 GUI 进程自身不持有代理，停堆只影响后台代理。
 func (a *app) stop() (string, error) {
 	a.mu.Lock()
-	if a.external && !a.running {
-		a.mu.Unlock()
-		if err := killByPort(a.port); err != nil {
-			return "", err
-		}
+	wasExternal := a.external
+	a.mu.Unlock()
+
+	if !httpOK(a.healthURL()) {
 		a.mu.Lock()
+		a.running = false
 		a.external = false
-		a.mu.Unlock()
-		return "外部代理实例已停止", nil
-	}
-	if !a.running {
 		a.mu.Unlock()
 		return "代理未在运行", nil
 	}
-	httpd := a.httpd
-	a.httpd = nil
+
+	if err := killByPort(a.port); err != nil {
+		return "", err
+	}
+	a.mu.Lock()
 	a.running = false
 	a.external = false
 	a.mu.Unlock()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-	_ = httpd.Shutdown(ctx)
-	return "代理核心已停堆", nil
+	if wasExternal {
+		return "后台代理已停止", nil
+	}
+	return "代理核心已停堆（后台进程已结束）", nil
 }
 
 // stateMsg 是发给界面的完整状态。
@@ -165,6 +165,7 @@ type stateMsg struct {
 	Autostart       bool   `json:"autostart"`
 	APIKey          string `json:"apiKey"`
 	NoticeDismissed bool   `json:"noticeDismissed"`
+	CloseHintDone    bool   `json:"closeHintDismissed"`
 	Version         string `json:"version"`
 	Core            string `json:"core"`
 	PID             int    `json:"pid"`
@@ -176,12 +177,24 @@ func (a *app) state() stateMsg {
 	running, external, started, lastErr, key := a.running, a.external, a.started, a.lastErr, a.apiKey
 	a.mu.Unlock()
 
+	// 探活：端口上有健康代理即视为运行中（可能是本 GUI 起的 headless 子进程，
+	// 也可能是开机自启/上次遗留的后台实例）。GUI 关闭不影响代理运行。
+	alive := httpOK(a.healthURL())
+	if alive && !running {
+		running = true
+		a.mu.Lock()
+		a.running = true
+		if a.started.IsZero() {
+			a.started = time.Now()
+		}
+		a.mu.Unlock()
+		started = a.started
+	}
+
 	phase := "idle"
 	switch {
 	case running:
 		phase = "running"
-	case external:
-		phase = "external"
 	case lastErr != "":
 		phase = "error"
 	}
@@ -194,6 +207,7 @@ func (a *app) state() stateMsg {
 		Host: a.host, Port: a.port, BaseURL: a.baseURL() + "/v1",
 		Uptime: up, Autostart: autostartInstalled(), APIKey: key,
 		NoticeDismissed: fileExists(a.noticeFile()),
+		CloseHintDone:   fileExists(a.closeHintFile()),
 		Version: appVersion, Core: coreVersion, PID: os.Getpid(), LastErr: lastErr,
 	}
 }
@@ -352,6 +366,12 @@ func (a *app) bindAll(w webview.WebView) {
 	})
 	_ = w.Bind("ccDismiss", func() string {
 		if err := os.WriteFile(a.noticeFile(), []byte("1"), 0o600); err != nil {
+			return jsonErr(err)
+		}
+		return jsonOK("已记录")
+	})
+	_ = w.Bind("ccDismissCloseHint", func() string {
+		if err := os.WriteFile(a.closeHintFile(), []byte("1"), 0o600); err != nil {
 			return jsonErr(err)
 		}
 		return jsonOK("已记录")
