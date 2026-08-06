@@ -225,14 +225,14 @@ body{
 /* 统计卡片 */
 .telemetry{flex:1;display:flex;flex-direction:column;min-height:0}
 .telemetry .p-body{flex:1;display:flex;flex-direction:column;min-height:0}
-.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
 .stat-card{
   position:relative;border:1px solid var(--line);border-radius:8px;padding:10px 12px 9px;
   background:linear-gradient(160deg,rgba(0,229,255,.05),rgba(124,77,255,.04) 60%,transparent);
   overflow:hidden;transition:all .25s}
 .stat-card:hover{transform:translateY(-2px);border-color:rgba(0,229,255,.35);box-shadow:0 6px 18px rgba(0,0,0,.35),0 0 16px rgba(0,229,255,.1)}
 .stat-card .k{font-size:10px;color:var(--dim);letter-spacing:2px}
-.stat-card .v{font-family:var(--mono);font-size:21px;font-weight:600;margin-top:3px;color:#c9ecff;text-shadow:0 0 14px rgba(0,229,255,.25)}
+.stat-card .v{font-family:var(--mono);font-size:24px;font-weight:600;margin-top:3px;color:#c9ecff;text-shadow:0 0 14px rgba(0,229,255,.25);white-space:nowrap}
 .stat-card .u{font-size:9px;color:var(--dim2);font-family:var(--mono);margin-left:4px}
 .stat-card .sub{font-size:9px;color:var(--dim);margin-top:2px;font-family:var(--mono)}
 .stat-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:linear-gradient(180deg,var(--cyan),transparent)}
