@@ -63,6 +63,9 @@
   /* ---- 帮助 ---- */
   #help { display:none; background:#161d2e; border:1px solid #24304a; border-radius:8px;
           padding:12px 16px; margin-top:12px; font-size:12px; color:#a8c0e8; line-height:1.9; }
+  /* ---- 模型配置参考 ---- */
+  #modelRef { display:none; background:#161d2e; border:1px solid #24304a; border-radius:8px;
+              padding:12px 16px; margin-top:12px; font-size:12px; color:#a8c0e8; line-height:1.9; }
   /* ---- 底部说明 ---- */
   .tip { margin-top:12px; font-size:12px; color:#5f7298; line-height:1.8; }
 </style>
@@ -102,6 +105,7 @@
   <div class="btns">
     <button id="toggleBtn" class="primary" onclick="toggleProxy()">&#9654; 启动代理</button>
     <button onclick="refreshNow()">&#8635; 刷新状态</button>
+    <button class="small" onclick="toggleModelRef()">&#9672; 模型配置参考</button>
     <button class="small" onclick="setAutostart()">&#9881; 设置开机自启</button>
     <button class="small" onclick="unsetAutostart()">取消开机自启</button>
     <button class="small" onclick="toggleHelp()">&#63; 使用帮助</button>
@@ -112,6 +116,22 @@
 
   <div class="sec">运行日志</div>
   <div id="log"></div>
+
+  <div id="modelRef">
+    <b>模型配置参考</b>（来源：CommandCode 官方文档）<br>
+    <br>
+    【上下文窗口】在 Agent 里填 Context / 上下文时参考：<br>
+    1M：deepseek-v4-flash、deepseek-v4-pro、qwen-3.7-max、minimax-m3、mimo-v2.5、gemini-3.1 系列<br>
+    256K：kimi-k2.6、step-3.7-flash　200K：glm-5<br>
+    完整数值以官方定价页为准：commandcode.ai/docs/resources/pricing-limits<br>
+    <br>
+    【最大输出 Token】接口统一校验上限 200000（所有模型一致，非 DeepSeek 专属）；<br>
+    官方未公布各模型单独输出上限。代理已自动钳制，Agent 里填 200000 以内均可（日常建议 64000）。<br>
+    <br>
+    【推理档位】CommandCode 接口不接收"推理档位"参数，档位由 Agent 客户端定义<br>
+    （如 Codex 中 deepseek-v4-flash 提供 low / medium / high / xhigh）。<br>
+    建议：日常用 Agent 默认档位；复杂任务选高档，省 token 选低档。
+  </div>
 
   <div id="help">
     1. 双击本文件 → 自动解压内置组件并启动代理（首次解压约 10~60 秒，请耐心等待，状态变绿即成功）。<br>
@@ -178,6 +198,11 @@ function toggleKey() {
 
 function toggleHelp() {
   var h = document.getElementById("help");
+  h.style.display = (h.style.display == "block") ? "none" : "block";
+}
+
+function toggleModelRef() {
+  var h = document.getElementById("modelRef");
   h.style.display = (h.style.display == "block") ? "none" : "block";
 }
 
