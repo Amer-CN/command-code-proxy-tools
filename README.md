@@ -1,245 +1,90 @@
-# CommandCode Proxy Server
+# CommandCode 代理控制台（Windows 便携工具）
 
-OpenAI-compatible proxy server for the CommandCode API. It exposes `/v1/chat/completions` and `/v1/models` endpoints so OpenAI-compatible clients can call CommandCode models through a local HTTP server.
+给 [CommandCode](https://commandcode.ai) 用户准备的 Windows 本地代理工具包：
+把官方只对 **Provider 套餐**开放的接口，转成 OpenAI 兼容的本地接口
+`http://127.0.0.1:55990/v1`，**普通套餐即可使用**，并附 HTML 控制台、一键启停、开机自启、单文件便携版。
 
-Repository: https://github.com/dev2k6/command-code-proxy-server
+> 代理核心来自 [dev2k6/command-code-proxy-server](https://github.com/dev2k6/command-code-proxy-server)（上游 v1.0.8）。
+> 本仓库在保留上游全部代码与历史的基础上，新增了 Windows 便携工具与修复（见[更新日志](#更新日志)）。
+> 上游原始 README 存档于 [UPSTREAM_README.md](UPSTREAM_README.md)。
 
-Version: `v1.0.8`
+## 为什么需要它
 
-## Features
+- CommandCode 官方 Provider API（`/provider/v1`）要求 **Provider 套餐**，普通套餐直接调用会被拒绝
+- 本代理走 CommandCode CLI 使用的内部接口（`/alpha/generate`），**普通套餐就能用**
+- 任何 OpenAI 兼容客户端 / Agent（Codex、Cherry Studio、NextChat、OpenCode 等）填上本地地址即可使用
 
-- OpenAI-compatible chat completions endpoint
-- Streaming and non-streaming responses
-- OpenAI-compatible model list endpoint
-- Short model name mapping
-- Optional default API key from CLI
-- Per-request API key via `Authorization` header
-- Configurable host and port
-- Checks GitHub tags for a newer proxy version and displays it next to the current version
+## 快速开始
 
-## Requirements
+1. 从 [Releases](https://github.com/Amer-CN/command-code-proxy-tools/releases) 下载（二选一）：
+   - `CommandCode代理-单文件版.hta`：**一个文件搞定**。双击即用，自动释放内置代理组件并启动（首次约 10~60 秒）
+   - `CommandCode代理-便携版.zip`：解压即用，包含控制台与启停脚本
+2. 在任意 Agent / 客户端中配置：
+   - **Base URL**：`http://127.0.0.1:55990/v1`
+   - **API Key**：你在 CommandCode Studio 生成的 Key（登录 https://commandcode.ai/studio/ → API keys → Generate API key）
+3. 选择模型即可使用（支持 17 个模型，见下表）
 
-- Go 1.26.2 or newer
+## 可用模型
 
-## Run
+| 模型（可填别名或全名） | 说明 |
+|---|---|
+| `deepseek-v4-pro` / `deepseek-v4-flash` | DeepSeek V4 系列，1M 上下文 |
+| `kimi-k2.6` / `kimi-k2.5` | Moonshot Kimi |
+| `glm-5.1` / `glm-5` | 智谱 GLM |
+| `qwen-3.6-max` / `qwen-3.7-max` / `qwen-3.7-max-free` | 通义千问 |
+| `gemini-3.1-flash-lite` | Google Gemini |
+| `minimax-m3` / `minimax-m2.7` / `minimax-m2.5` | MiniMax |
+| `step-3.7-flash` / `step-3.5-flash` | 阶跃星辰 |
+| `mimo-v2.5` / `mimo-v2.5-pro` | 小米 MiMo |
 
-```bash
-go run main.go
-```
+完整列表与短别名见控制台内「可用模型」区（点击模型名一键复制）。
 
-Default server address:
+## 文件说明
 
-```text
-http://127.0.0.1:55990
-```
+| 文件 | 用途 |
+|---|---|
+| `CommandCode代理-单文件版.hta` | 单文件版：内嵌代理组件，双击即用 |
+| `CommandCode控制台.hta` | 多文件版控制台：启停/状态/模型列表/开机自启 |
+| `启动代理.bat` / `停止代理.bat` | 命令行启停 |
+| `设置开机自启.bat` / `取消开机自启.bat` | 开机自动后台运行 |
+| `生成单文件版.py` + `hta_template.txt` | 重新打包单文件版的构建工具 |
 
-## CLI options
+## 常见问题（FAQ）
 
-```bash
-go run main.go [options]
-```
+### 报错 `400 ... expected number to be <=200000 at "params.max_tokens"`，我是不是被封了？
 
-| Option | Default | Description |
-| --- | --- | --- |
-| `-host` | `127.0.0.1` | Host to bind the server to |
-| `-port` | `55990` | Port to run the server on |
-| `-api-key` | empty | Optional default CommandCode API key |
-| `-version` | `false` | Print version and exit |
+**不是被封号。** 这是**请求参数校验错误**，与账号、用量、封号无关（封号/欠费会是 401/403/429）。
 
-Examples:
+原因：部分 Agent（如 Codex）**无法设置"最大输出 token"**，会按模型上下文窗口（如 1M）发送超大 `max_tokens`（如 100 万），超过 CommandCode 接口上限 **200,000** 而被直接拒绝，表现为"任务突然中断"。
 
-```bash
-# Run on default host and port
-go run main.go
+**v1.0.1 起代理已自动钳制** `max_tokens` 到 200000（即 API 上限），请求全部合法化，不再需要手动设置。输出空间不受任何影响（API 上限本就是 20 万），正常请求完全无感。
 
-# Run on a custom port
-go run main.go -port 8080
+### 钳制 max_tokens 会不会截断长任务的输出？
 
-# Expose on all interfaces
-go run main.go -host 0.0.0.0
+不会。`max_tokens` 是"单次回复的输出上限"，200000 就是该 API 的最大允许值；钳制只是让请求合法，并不会截断任何输出。正常任务（几百~几千 token）完全不受影响，需要超长输出时依然能用到满额 20 万。
 
-# Use a default API key for all requests that do not include Authorization
-go run main.go -api-key your-commandcode-api-key
+### 杀毒软件报警或文件被清理？
 
-# Print version
-go run main.go -version
-```
+单文件版"内嵌可执行文件"、开机自启脚本"写入启动项"容易被火绒/360 等安全软件判定为可疑。首次使用若弹窗请选择"允许/信任"，或把工具目录加入杀软信任区；文件被清理的话，加完信任区重新下载/生成即可。
 
-## Build
+### 为什么不能直接用官方文档里的接口？
 
-Build for the current platform:
+官方 `/provider/v1` 需要 Provider 套餐；本工具走 CLI 内部接口，普通套餐可用——这也是本工具存在的意义。
 
-```bash
-go build -o bin/command-code-proxy
-```
+### 支持哪些系统？
 
-Cross-compile for Windows and Linux:
+仅 Windows（HTA 依赖系统自带 mshta 引擎）。使用需有自己的 CommandCode 账号与套餐（普通套餐即可）。
 
-```bash
-GOOS=windows GOARCH=amd64 go build -o bin/command-code-proxy.exe
-GOOS=linux GOARCH=amd64 go build -o bin/command-code-proxy
-```
+## 更新日志
 
-## API key behavior
+### v1.0.1（2026-08-06）
+- **修复**：`max_tokens` 超限导致的 400 错误——代理层统一钳制到 200000（API 上限），并新增单元测试
+- 单文件版 / 多文件版同步更新（内嵌修复后的代理）
 
-The proxy uses the API key in this order:
+### v1.0.0（2026-08-06）
+- 首个发布：单文件版 HTA、HTML 控制台、启停/开机自启脚本、单文件构建工具
 
-1. `Authorization` header from the incoming client request
-2. `-api-key` CLI value
-3. If neither exists, the request returns `401 Unauthorized`
+## 致谢
 
-Header format:
-
-```http
-Authorization: Bearer your-commandcode-api-key
-```
-
-## Endpoints
-
-### Health check
-
-```http
-GET /health
-```
-
-Response:
-
-```json
-{"status":"ok"}
-```
-
-### List models
-
-```http
-GET /v1/models
-```
-
-Returns an OpenAI-compatible model list.
-
-### Chat completions
-
-```http
-POST /v1/chat/completions
-```
-
-Example non-streaming request:
-
-```bash
-curl http://127.0.0.1:55990/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer your-commandcode-api-key" \
-  -d '{
-    "model": "deepseek-v4-pro",
-    "messages": [
-      {"role": "system", "content": "You are helpful."},
-      {"role": "user", "content": "Hello"}
-    ],
-    "stream": false
-  }'
-```
-
-Example streaming request:
-
-```bash
-curl -N http://127.0.0.1:55990/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer your-commandcode-api-key" \
-  -d '{
-    "model": "deepseek-v4-pro",
-    "messages": [
-      {"role": "user", "content": "Write a short poem."}
-    ],
-    "stream": true
-  }'
-```
-
-## Supported model aliases
-
-The proxy accepts full model IDs and these short aliases:
-
-| Alias | Maps to |
-| --- | --- |
-| `deepseek-v4-pro`, `deepseek-v4`, `deepseek-pro` | `deepseek/deepseek-v4-pro` |
-| `deepseek-v4-flash`, `deepseek-flash` | `deepseek/deepseek-v4-flash` |
-| `minimax-m2.7`, `minimax2.7` | `MiniMaxAI/MiniMax-M2.7` |
-| `minimax-m2.5`, `minimax2.5`, `minimax` | `MiniMaxAI/MiniMax-M2.5` |
-| `glm-5.1` | `zai-org/GLM-5.1` |
-| `glm-5` | `zai-org/GLM-5` |
-| `kimi-k2.6`, `kimi2.6` | `moonshotai/Kimi-K2.6` |
-| `kimi-k2.5`, `kimi2.5` | `moonshotai/Kimi-K2.5` |
-| `qwen-3.6-max-preview`, `qwen3.6-max` | `Qwen/Qwen3.6-Max-Preview` |
-| `qwen-3.6-plus`, `qwen3.6-plus`, `qwen3.6` | `Qwen/Qwen3.6-Plus` |
-| `step-3.5-flash`, `step3.5` | `stepfun/Step-3.5-Flash` |
-| `gemini-3.1-flash-lite`, `gemini-flash-lite` | `google/gemini-3.1-flash-lite` |
-| `minimax-m3`, `minimax3` | `MiniMaxAI/MiniMax-M3` |
-| `qwen-3.7-max-free`, `qwen3.7-max-free` | `Qwen/Qwen3.7-Max-Free` |
-| `qwen-3.7-max`, `qwen3.7-max` | `Qwen/Qwen3.7-Max` |
-| `step-3.7-flash`, `step3.7` | `stepfun/Step-3.7-Flash` |
-| `mimo-v2.5-pro`, `mimo-pro` | `xiaomi/mimo-v2.5-pro` |
-| `mimo-v2.5`, `mimo` | `xiaomi/mimo-v2.5` |
-
-Unknown model names are passed through unchanged.
-
-## Project structure
-
-```text
-.
-├── README.md
-├── go.mod
-├── go.sum
-├── main.go
-├── bin
-│   ├── command-code-proxy
-│   └── command-code-proxy.exe
-└── internal
-    ├── api
-    │   ├── commandcode.go
-    │   └── openai.go
-    ├── proxy
-    │   ├── convert.go
-    │   ├── model.go
-    │   └── proxy.go
-    ├── server
-    │   └── server.go
-    ├── update
-    │   └── update.go
-    └── version
-        └── version.go
-```
-
-## How it works
-
-1. Client sends an OpenAI-compatible request to the local proxy.
-2. The proxy extracts system messages, maps the model name, and converts messages to CommandCode format.
-3. The proxy sends the request to `https://api.commandcode.ai/alpha/generate`.
-4. CommandCode streaming NDJSON events are converted back to OpenAI-compatible SSE chunks or collected into a single JSON response.
-
-## Version check
-
-On startup and when running `-version`, the proxy calls:
-
-```text
-https://api.github.com/repos/dev2k6/command-code-proxy-server/tags
-```
-
-If the latest GitHub tag is newer than the current app version, the version line is displayed as:
-
-```text
-v1.0.8 (latest: v1.x.x)
-```
-
-## CommandCode version header
-
-The upstream request includes:
-
-```http
-x-command-code-version: <latest npm command-code version>
-```
-
-The value is fetched from:
-
-```text
-https://registry.npmjs.org/command-code/latest
-```
-
-The fetched version is cached for 30 minutes. If the registry request fails, the proxy uses the last cached version, or `unknown` if no version has been fetched yet.
+- 代理核心：[dev2k6/command-code-proxy-server](https://github.com/dev2k6/command-code-proxy-server)
+- 模型与额度：由你的 CommandCode 账号提供
