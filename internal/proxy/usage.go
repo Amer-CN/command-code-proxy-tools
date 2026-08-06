@@ -24,6 +24,13 @@ type usageSummary struct {
 	Percent    float64         `json:"percentUsed"`
 	DaysLeft   int             `json:"daysLeft"`
 	UsageURL   string          `json:"usageUrl,omitempty"`
+	// List of recent usage records (from /internal/usage)
+	Items       json.RawMessage `json:"items,omitempty"`
+	ListCursor  string          `json:"listCursor,omitempty"`
+	TotalTokens int64           `json:"totalTokens"`
+	TotalRuns   int64           `json:"totalRuns"`
+	TokensIn    int64           `json:"tokensIn"`
+	TokensOut   int64           `json:"tokensOut"`
 }
 
 // handleUsage queries CommandCode's usage endpoints (same calls the CLI /usage
@@ -166,6 +173,37 @@ func (p *Proxy) HandleUsage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	sum.UsageURL = "https://commandcode.ai/usage"
+
+	// 5. recent usage records list (/internal/usage) — same call the official
+	// Usage page makes. Returns items with per-request tokens/cost/model/status.
+	limit := r.URL.Query().Get("limit")
+	if limit == "" {
+		limit = "10"
+	}
+	listParams := map[string]string{"limit": limit, "orgId": orgID}
+	if c := r.URL.Query().Get("cursor"); c != "" {
+		listParams["cursor"] = c
+	}
+	if listRaw, _, err := get("/internal/usage", listParams); err == nil {
+		var list struct {
+			Items  json.RawMessage `json:"items"`
+			Cursor string          `json:"cursor"`
+			Total  struct {
+				TotalTokens int64 `json:"totalTokens"`
+				TotalRuns   int64 `json:"totalRuns"`
+				TokensIn    int64 `json:"tokensIn"`
+				TokensOut   int64 `json:"tokensOut"`
+			} `json:"total"`
+		}
+		if uerr := json.Unmarshal(listRaw, &list); uerr == nil {
+			sum.Items = list.Items
+			sum.ListCursor = list.Cursor
+			sum.TotalTokens = list.Total.TotalTokens
+			sum.TotalRuns = list.Total.TotalRuns
+			sum.TokensIn = list.Total.TokensIn
+			sum.TokensOut = list.Total.TokensOut
+		}
+	}
 
 	p.writeJSON(w, sum)
 }

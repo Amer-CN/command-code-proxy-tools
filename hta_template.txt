@@ -247,7 +247,26 @@ function loadUsage() {
       html += "&#128293; 额度总盘：$" + d.creditsTotal.toFixed(2) + "<br>";
     }
     if (d.daysLeft != null) html += "&#128197; 本期剩余：" + d.daysLeft + " 天<br>";
-    if (d.usageUrl) html += "&#128279; 详细用量：<a href='" + d.usageUrl + "' style='color:#7db3ff'>官方网页</a>（登录查看）<br>";
+    if (d.totalTokens > 0 || d.totalRuns > 0) {
+      html += "&#128200; 总 Token：" + d.totalTokens.toLocaleString() + "<br>";
+      if (d.tokensIn > 0 || d.tokensOut > 0) {
+        html += "&#8593; 输入：" + d.tokensIn.toLocaleString() + " ／ &#8595; 输出：" + d.tokensOut.toLocaleString() + "<br>";
+      }
+      html += "&#128213; 运行次数：" + d.totalRuns + "<br>";
+    }
+    if (d.items && d.items.length > 0) {
+      html += "<br><b>最近明细（" + d.items.length + " 条）</b><table style='width:100%;border-collapse:collapse;font-size:11px;margin-top:6px'>";
+      html += "<tr style='color:#5f7298'><td style='padding:2px 4px;border-bottom:1px solid #24304a'>时间</td><td style='padding:2px 4px;border-bottom:1px solid #24304a'>模型</td><td style='padding:2px 4px;border-bottom:1px solid #24304a'>输入</td><td style='padding:2px 4px;border-bottom:1px solid #24304a'>输出</td><td style='padding:2px 4px;border-bottom:1px solid #24304a'>费用</td></tr>";
+      for (var i = 0; i < d.items.length; i++) {
+        var it = d.items[i];
+        var t = "";
+        try { t = new Date(it.time || it.createdAt || it.timestamp).toLocaleString(); } catch (e) { t = ""; }
+        var cost = (it.totalCost != null) ? "$" + parseFloat(it.totalCost).toFixed(4) : "-";
+        html += "<tr><td style='padding:2px 4px;border-bottom:1px solid #161d2e'>" + t + "</td><td style='padding:2px 4px;border-bottom:1px solid #161d2e'>" + (it.model || "-") + "</td><td style='padding:2px 4px;border-bottom:1px solid #161d2e'>" + (it.tokensIn != null ? it.tokensIn : "-") + "</td><td style='padding:2px 4px;border-bottom:1px solid #161d2e'>" + (it.tokensOut != null ? it.tokensOut : "-") + "</td><td style='padding:2px 4px;border-bottom:1px solid #161d2e'>" + cost + "</td></tr>";
+      }
+      html += "</table>";
+    }
+    if (d.usageUrl) html += "<br>&#128279; 详细用量：<a href='" + d.usageUrl + "' style='color:#7db3ff'>官方网页</a>（登录查看）<br>";
     box.innerHTML = html;
   } catch (e) {
     box.innerHTML = "查询失败：" + e.message;
