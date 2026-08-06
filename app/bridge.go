@@ -363,19 +363,30 @@ func (a *app) bindAll(w webview.WebView) {
 		}
 		return `{"ok":false,"msg":"代理未运行或无法连接"}`
 	})
-	_ = w.Bind("ccCalib", func(v string) string {
+	_ = w.Bind("ccCalib", func(model, v string) string {
 		v = strings.TrimSpace(v)
-		if v == "" {
-			_ = os.Remove(filepath.Join(exeDir(), "calibration.txt"))
-			return jsonOK("已清除校准")
+		model = strings.TrimSpace(model)
+		if model == "" {
+			return jsonErr(fmt.Errorf("缺少模型名"))
 		}
-		if _, err := strconv.ParseFloat(v, 64); err != nil {
-			return jsonErr(fmt.Errorf("请输入数字金额"))
+		if v != "" {
+			if _, err := strconv.ParseInt(v, 10, 64); err != nil {
+				return jsonErr(fmt.Errorf("请输入数字（官网该模型总 Token 数）"))
+			}
 		}
-		if err := os.WriteFile(filepath.Join(exeDir(), "calibration.txt"), []byte(v), 0o600); err != nil {
+		// 通过代理核心写入校准（stats.json 同目录）
+		// GUI 与代理是独立进程，这里直接调用代理的 /v1/calibration 接口
+		resp, err := http.PostForm(a.baseURL()+"/v1/calibration",
+			map[string][]string{"model": {model}, "tokens": {v}})
+		if err != nil {
 			return jsonErr(err)
 		}
-		return jsonOK("校准已保存")
+		defer resp.Body.Close()
+		body, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode != http.StatusOK {
+			return jsonErr(fmt.Errorf("保存失败: %s", string(body)))
+		}
+		return string(body)
 	})
 	_ = w.Bind("ccModels", func() string {
 		if s, ok := httpGet(a.baseURL() + "/v1/models"); ok {

@@ -496,10 +496,7 @@ body{
           <div class="tel-actions">
             <button class="ibtn" id="refreshStats">↻ 刷新数据</button>
             <button class="ibtn violet" id="openUsage">⌁ 官方用量页</button>
-            <span class="calib-row">
-              <input type="text" id="calibInput" placeholder="官网金额 $ 校准" style="width:110px;background:#0d1420;border:1px solid #2a3a5c;color:#e2e8f0;padding:5px 8px;border-radius:4px;font-size:11px">
-              <button class="ibtn" id="calibSave">保存</button>
-            </span>
+            <span class="calib-tip" style="font-size:10px;color:#5f7398">点模型条可校准官网 Token</span>
           </div>
         </div>
       </section>
@@ -701,11 +698,13 @@ async function refreshStats(){
   // 金额估算（官方单价 × 本地 token）
   const cost = d.cost || 0;
   $("statCost").textContent = "$" + cost.toFixed(4);
-  // 校准：官网金额
-  const calib = d.calibration && d.calibration.official;
-  if (calib > 0){
-    $("statCostSub").textContent = "官网校准 $" + calib.toFixed(2) + " · 差 $" + Math.abs(calib - cost).toFixed(2);
-    if (!$("calibInput").value) $("calibInput").value = calib.toFixed(2);
+  // 校准：每模型官网 Token（来自 calibration.json）
+  const calibMap = (d.calibration && d.calibration.models) || {};
+  S.calibMap = calibMap;
+  const calibTotal = Object.values(calibMap).reduce((s,v)=>s+(v||0),0);
+  if (calibTotal > 0){
+    const diff = calibTotal - (total.total||0);
+    $("statCostSub").textContent = "官网校准 " + fmt(calibTotal) + " · 差 " + (diff>=0?"+":"") + fmt(diff) + " tok";
   } else {
     $("statCostSub").textContent = "按官方单价估算";
   }
@@ -716,14 +715,29 @@ async function refreshStats(){
   wrap.innerHTML = "";
   sorted.forEach((m,i)=>{
     const row = document.createElement("div");
-    row.className = "bar-row"; row.style.animationDelay = (i*55)+"ms";
+    row.className = "bar-row calib-row"; row.style.animationDelay = (i*55)+"ms";
+    row.style.cursor = "pointer"; row.title = "点击校准该模型（填官网 Token 数）";
     const c = vendorColor(m.name);
+    const official = calibMap[m.name];
+    const diffTxt = official ? ` 官网${fmt(official)} 差${official-m.sum>=0?"+":""}${fmt(official-m.sum)}` : "";
     row.innerHTML = `<span class="name"></span>
       <div class="bar-track"><div class="bar-fill" style="background:linear-gradient(90deg,${c},${c}88);box-shadow:0 0 10px ${c}55"></div></div>
-      <span class="val">${fmt(m.sum)}</span>`;
+      <span class="val">${fmt(m.sum)}${diffTxt}</span>`;
     row.querySelector(".name").textContent = m.name;
+    row.onclick = ()=>calibModel(m.name);
     wrap.appendChild(row);
     requestAnimationFrame(()=>requestAnimationFrame(()=>{ row.querySelector(".bar-fill").style.width = Math.max(3, m.sum/max*100) + "%"; }));
+  });
+}
+
+// 点击模型条 → 弹输入框校准该模型官网 Token 数（留空=清除）
+function calibModel(model){
+  const cur = (S.calibMap && S.calibMap[model]) || "";
+  const v = prompt("校准 " + model + "\n填官网该模型的总 Token 数（留空=清除校准）：", cur ? String(cur) : "");
+  if (v === null) return;
+  call("Calib", model, v.trim()).then(r=>{
+    if (r && r.ok){ log("ok", model + " 校准已保存"); toast("ok","校准已保存", model); refreshStats(); }
+    else { log("err", "保存失败: " + ((r&&r.msg)||"未知")); }
   });
 }
 
@@ -804,12 +818,6 @@ $("toggleKey").onclick = ()=>{ const k=$("apiKey"); const show=k.type==="passwor
 $("apiKey").addEventListener("input", e=>{ e.target.dataset.touched = "1"; });
 $("refreshStats").onclick = ()=>{ refreshStats(); log("sys","手动刷��链路监测数据"); };
 $("openUsage").onclick = ()=>{ call("Open","https://commandcode.ai/settings/usage"); log("net","已在浏览器打开官方用量页"); };
-$("calibSave").onclick = ()=>{
-  const v = $("calibInput").value.trim();
-  const r = call("Calib", v);
-  if (r && r.ok){ log("ok", v ? "官网校准金额已保存 $" + v : "校准已清除"); toast("ok","校准已保存", v ? "$"+v : "已清除"); refreshStats(); }
-  else { log("err", "保存失败: " + ((r&&r.msg)||"未知")); }
-};
 $("clearLog").onclick = ()=>{ logStream.innerHTML=""; log("sys","日志已清空"); };
 $("avDismiss").onclick = ()=>{ $("avBanner").style.display="none"; call("Dismiss"); log("sys","已关闭安全提示（不再显示）"); };
 $("closeDismiss").onclick = ()=>{ $("closeBanner").style.display="none"; call("DismissCloseHint"); log("sys","已关闭关窗提示（不再显示）"); };

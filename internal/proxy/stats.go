@@ -2,10 +2,10 @@ package proxy
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -154,7 +154,7 @@ func (p *Proxy) HandleStats(w http.ResponseWriter, r *http.Request) {
 	// 金额估算（官方定价 per 1M tokens，USD；无价格的模型按 0 计）
 	cost := estimateCost(snap.Models)
 
-	// 自定义校准值（用户从官网读取后填入，保存到 calibration.txt）
+	// 按模型的校准值（用户从官网读取后填入，保存到 calibration.json）
 	calib := p.calibration()
 
 	w.Header().Set("Content-Type", "application/json")
@@ -166,7 +166,7 @@ func (p *Proxy) HandleStats(w http.ResponseWriter, r *http.Request) {
 		"statsFile": filepath.Base(p.Stats.file),
 		"cost":      cost, // 估算金额（按官方单价 × 本地 token）
 		"calibration": map[string]any{
-			"official": calib, // 用户填的官网金额（0 = 未填）
+			"models": calib, // 每模型官网校准 token {模型: token}
 		},
 	})
 }
@@ -233,17 +233,68 @@ func shortName(full string) string {
 	return full
 }
 
-// calibration 读取用户填写的官网校准金额（USD），文件与 stats.json 同目录。
-func (p *Proxy) calibration() float64 {
+// calibration 读取按模型的官网 token 校准值，文件与 stats.json 同目录。
+// 格式：{"模型名": 官网token数, ...}；空串=清除某模型。
+func (p *Proxy) calibration() map[string]int64 {
 	dir := filepath.Dir(p.Stats.file)
 	if dir == "." {
 		dir = "."
 	}
-	b, err := os.ReadFile(filepath.Join(dir, "calibration.txt"))
+	b, err := os.ReadFile(filepath.Join(dir, "calibration.json"))
 	if err != nil {
-		return 0
+		return map[string]int64{}
 	}
-	var v float64
-	_, _ = fmt.Sscanf(strings.TrimSpace(string(b)), "%f", &v)
+	var v map[string]int64
+	if err := json.Unmarshal(b, &v); err != nil || v == nil {
+		return map[string]int64{}
+	}
 	return v
+}
+
+// setCalibration 写入某模型的官网校准 token 数；token<=0 表示清除。
+func (p *Proxy) setCalibration(model string, token int64) error {
+	dir := filepath.Dir(p.Stats.file)
+	if dir == "." {
+		dir = "."
+	}
+	calib := p.calibration()
+	if token <= 0 {
+		delete(calib, model)
+	} else {
+		calib[model] = token
+	}
+	data, err := json.Marshal(calib)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(dir, "calibration.json"), data, 0o600)
+}
+
+// HandleCalibration 接收 GUI 传来的模型校准写入（POST model=xxx&tokens=NNN）。
+func (p *Proxy) HandleCalibration(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		p.writeOpenAIError(w, http.StatusMethodNotAllowed, "Method not allowed", "invalid_request_error")
+		return
+	}
+	model := r.FormValue("model")
+	tokensStr := r.FormValue("tokens")
+	if model == "" {
+		p.writeOpenAIError(w, http.StatusBadRequest, "missing model", "invalid_request_error")
+		return
+	}
+	var token int64
+	if tokensStr != "" {
+		n, err := strconv.ParseInt(tokensStr, 10, 64)
+		if err != nil {
+			p.writeOpenAIError(w, http.StatusBadRequest, "tokens must be a number", "invalid_request_error")
+			return
+		}
+		token = n
+	}
+	if err := p.setCalibration(model, token); err != nil {
+		p.writeOpenAIError(w, http.StatusInternalServerError, err.Error(), "server_error")
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_, _ = w.Write([]byte(`{"ok":true,"msg":"校准已保存"}`))
 }
