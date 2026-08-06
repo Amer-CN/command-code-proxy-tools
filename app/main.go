@@ -19,7 +19,10 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
+	"github.com/dev2k6/command-code-proxy-server/internal/proxy"
+	"github.com/dev2k6/command-code-proxy-server/internal/server"
 	webview "github.com/webview/webview_go"
 )
 
@@ -39,6 +42,28 @@ var (
 	flagHeadless = flag.Bool("headless", false, "无窗口后台模式（供开机自启使用）")
 	flagVersion  = flag.Bool("version", false, "打印版本并退出")
 )
+
+// runCoreHeadless 在本进程内启动代理核心并阻塞（headless 后台模式）。
+// 这是"代理本体"：GUI 的 start 会 spawn 本模式作为子进程。
+func runCoreHeadless(host, port, apiKey string) error {
+	// 端口被非健康进程占用（僵死/残留）→ 先清理。
+	if portBusy(port) {
+		_ = killByPort(port)
+		time.Sleep(300 * time.Millisecond)
+	}
+	p := proxy.NewProxy(apiKey)
+	p.SetStatsFile(filepath.Join(exeDir(), "stats.json"))
+	srv := server.NewServer(p)
+	srv.SetHost(host)
+	srv.SetPort(port)
+
+	ln, err := net.Listen("tcp", net.JoinHostPort(host, port))
+	if err != nil {
+		return fmt.Errorf("端口 %s 被其他程序占用: %v", port, err)
+	}
+	srv.StartWithListener(ln)
+	return nil
+}
 
 // exeDir 返回 exe 所在目录（go run 时退回工作目录），数据文件都放在这里。
 func exeDir() string {
@@ -64,9 +89,10 @@ func main() {
 
 	app := newApp(*flagHost, *flagPort, *flagAPIKey)
 
-	// 无窗口后台模式：进程内启动代理后永久阻塞（由 taskkill / 界面停止）
+	// 无窗口后台模式：本进程内嵌代理核心常驻（由 GUI 的 Stop / taskkill 结束）。
+	// 注意：headless 是"代理本体"，不再 spawn 子进程；GUI 的 start 才是 spawn 方。
 	if *flagHeadless {
-		if _, err := app.start(*flagAPIKey); err != nil {
+		if err := runCoreHeadless(*flagHost, *flagPort, *flagAPIKey); err != nil {
 			_ = os.WriteFile(filepath.Join(exeDir(), "headless-error.log"),
 				[]byte(err.Error()), 0o600)
 			os.Exit(1)

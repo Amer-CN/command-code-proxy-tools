@@ -97,6 +97,15 @@ func (a *app) start(key string) (string, error) {
 		return "检测到 " + a.baseURL() + " 代理已在运行，已接入", nil
 	}
 
+	// 端口被非健康进程占用（僵死/残留）→ 先清理，再启动。
+	if portBusy(a.port) {
+		if err := killByPort(a.port); err != nil {
+			// 清理失败不阻塞：子进程绑定端口时若仍冲突会再报错
+			_ = err
+		}
+		time.Sleep(300 * time.Millisecond)
+	}
+
 	// 启动 headless 子进程（同一 exe，-headless 参数），代理独立常驻。
 	exe, err := os.Executable()
 	if err != nil {
@@ -268,6 +277,21 @@ func httpGet(url string) (string, bool) {
 }
 
 func httpOK(url string) bool { _, ok := httpGet(url); return ok }
+
+// portBusy 检查端口是否有进程监听（不论是否健康）。
+func portBusy(port string) bool {
+	out, err := exec.Command("netstat", "-ano", "-p", "tcp").Output()
+	if err != nil {
+		return false
+	}
+	for _, line := range strings.Split(string(out), "\n") {
+		f := strings.Fields(line)
+		if len(f) >= 5 && strings.EqualFold(f[3], "LISTENING") && strings.HasSuffix(f[1], ":"+port) {
+			return true
+		}
+	}
+	return false
+}
 
 // killByPort 结束监听指定端口的进程（排除自己），用于停止外部/遗留实例。
 func killByPort(port string) error {

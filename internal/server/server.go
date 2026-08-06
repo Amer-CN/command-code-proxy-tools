@@ -2,6 +2,7 @@ package server
 
 import (
 	"log"
+	"net"
 	"net/http"
 	"time"
 
@@ -79,6 +80,14 @@ func logger(next http.HandlerFunc) http.HandlerFunc {
 func (s *Server) Start() {
 	addr := s.Host + ":" + s.Port
 	if err := http.ListenAndServe(addr, s.Handler); err != nil {
+		log.Fatalf("Server failed: %v", err)
+	}
+}
+
+// StartWithListener serves on an existing listener (used by headless mode
+// where port binding is handled by the caller).
+func (s *Server) StartWithListener(ln net.Listener) {
+	if err := http.Serve(ln, s.Handler); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
 }
