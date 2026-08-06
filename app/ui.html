@@ -604,7 +604,7 @@ const PH = {
   starting: {big:"点火序列",   sub:"IGNITION SEQUENCE",       pill:"点火中", pillCls:"starting", reactor:"st",   bigCls:"glow-st"},
   running:  {big:"核心在线",   sub:"LINK ONLINE · STREAMING", pill:"运行中", pillCls:"running",  reactor:"run",  bigCls:"glow-run"},
   stopping: {big:"停堆序列",   sub:"SHUTDOWN SEQUENCE",       pill:"关闭中", pillCls:"stopping", reactor:"st",   bigCls:"glow-st"},
-  external: {big:"外部实例",   sub:"EXTERNAL CORE DETECTED",  pill:"外部运行",pillCls:"running",  reactor:"ext",  bigCls:"glow-run"},
+  external: {big:"外部实例",   sub:"后台代理运行中 · 点核心可接管",  pill:"外部运行",pillCls:"running",  reactor:"ext",  bigCls:"glow-run"},
   error:    {big:"核心故障",   sub:"CORE FAULT",              pill:"故障",   pillCls:"error",    reactor:"err",  bigCls:"glow-err"}
 };
 function setPhase(p){
@@ -633,9 +633,10 @@ async function toggleCore(){
   if (S.phase === "starting" || S.phase === "stopping") return;
   shockwave();
   if (S.phase === "running" || S.phase === "external"){
-    setPhase("stopping"); log("sys", "停堆序列已触发…");
+    const takingOver = S.phase === "external";
+    setPhase("stopping"); log("sys", takingOver ? "接管外部实例 · 停止后台代理…" : "停堆序列已触发…");
     const r = await call("Stop");
-    if (r.ok){ log("ok", r.msg || "代理核心已停堆"); toast("info","核心已停堆",""); }
+    if (r.ok){ log("ok", r.msg || "代理核心已停堆"); toast("info", takingOver ? "已接管 · 可再次点击启动" : "核心已停堆",""); }
     else { log("err", "停止失败: " + (r.msg||"未知错误")); toast("err","停止失败", r.msg||""); }
     await pollState();
   } else {

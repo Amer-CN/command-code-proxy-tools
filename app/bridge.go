@@ -88,10 +88,11 @@ func (a *app) start(key string) (string, error) {
 	if key == "" {
 		key = a.apiKey
 	}
-	// 端口已被健康代理占用 → 直接接管观察（通常是开机自启的后台实例）
+	// 端口已被健康代理占用 → 直接接管观察（通常是开机自启的后台实例）。
+	// 提示用户：点击能量核心可停止外部实例并接管。
 	if httpOK(a.healthURL()) {
 		a.external = true
-		return "检测到 " + a.baseURL() + " 已有代理实例在运行（可能来自开机自启），已接入监测", nil
+		return "检测到 " + a.baseURL() + " 已有后台代理在运行。点击能量核心可停止它并接管；或继续使用现有后台实例", nil
 	}
 
 	a.migrateLegacyStats()
