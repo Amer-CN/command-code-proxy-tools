@@ -303,6 +303,7 @@ func (p *Proxy) StreamResponse(w http.ResponseWriter, r *http.Request, ccResp *h
 	sentRole := false
 	toolCallIndex := 0
 	toolCallIndexes := map[string]int{}
+	var streamIn, streamOut int64 // 累计本次流的 token 用量（finish 事件报告）
 
 	lineErr := forEachLine(ccResp.Body, r.Context(), func(line string) error {
 		p.debugf("[DEBUG] CommandCode stream line: %s", truncateLog(line))
@@ -453,6 +454,14 @@ func (p *Proxy) StreamResponse(w http.ResponseWriter, r *http.Request, ccResp *h
 			})
 			fmt.Fprintf(w, "data: [DONE]\n\n")
 			flusher.Flush()
+			// 记录流式请求的本地统计（Codex 等 agent 均走流式）
+			if event.TotalUsage != nil {
+				streamIn = int64(event.TotalUsage.InputTokens)
+				streamOut = int64(event.TotalUsage.OutputTokens)
+				if streamIn > 0 || streamOut > 0 {
+					p.Stats.Record(model, streamIn, streamOut)
+				}
+			}
 
 		case "error":
 			log.Printf("[ERROR] Stream error: %v", event.Error)
