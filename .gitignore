@@ -15,10 +15,14 @@
 .DS_Store
 Thumbs.db
 
-# Local convenience (API key cache, logs)
+# Local data (API key cache, stats, logs, notice flag)
 api-key.txt
+stats.json
+stats.json.tmp
+notice_dismissed.flag
+headless-error.log
 
 # Release build artifacts
+CommandCodeProxyDeck.exe
 CommandCode代理-便携版.zip
-notice_dismissed.flag
 *.exe~

@@ -1,11 +1,12 @@
-# CommandCode 代理控制台（Windows 便携工具）
+# CommandCode 代理控制台（Windows 独立程序 · WebView2）
 
-给 [CommandCode](https://commandcode.ai) 用户准备的 Windows 本地代理工具包：
+给 [CommandCode](https://commandcode.ai) 用户准备的 Windows 本地代理工具：
 把官方只对 **Provider 套餐**开放的接口，转成 OpenAI 兼容的本地接口
-`http://127.0.0.1:55990/v1`，**普通套餐即可使用**，并附 HTML 控制台、一键启停、开机自启、单文件便携版。
+`http://127.0.0.1:55990/v1`，**普通套餐即可使用**。
+
+v2.0 起，控制台从 HTA 全面重做：**科幻全息界面的独立 exe 程序**，代理核心直接在程序进程内运行，双击即用、点火秒开。
 
 > 代理核心来自 [dev2k6/command-code-proxy-server](https://github.com/dev2k6/command-code-proxy-server)（上游 v1.0.8）。
-> 本仓库在保留上游全部代码与历史的基础上，新增了 Windows 便携工具与修复（见[更新日志](#更新日志)）。
 > 上游原始 README 存档于 [UPSTREAM_README.md](UPSTREAM_README.md)。
 
 ## 为什么需要它
@@ -16,55 +17,74 @@
 
 ## 快速开始
 
-1. 从 [Releases](https://github.com/Amer-CN/command-code-proxy-tools/releases) 下载（二选一）：
-   - `CommandCode代理-单文件版.hta`：**一个文件搞定**。双击即用，自动释放内置代理组件并启动（首次约 10~60 秒）
-   - `CommandCode代理-便携版.zip`：解压即用，包含控制台与启停脚本
-2. 在任意 Agent / 客户端中配置：
-   - **Base URL**：`http://127.0.0.1:55990/v1`
-   - **API Key**：你在 CommandCode Studio 生成的 Key（登录 https://commandcode.ai/studio/ → API keys → Generate API key）
-3. 选择模型即可使用（支持 17 个模型，见下表）
+```bat
+:: 1. 构建（需要本机装有 Go 1.22+，https://go.dev/dl/）
+构建EXE.bat
 
-## 可用模型
+:: 2. 得到 CommandCodeProxyDeck.exe，双击打开
+:: 3. 点击左侧「能量核心」点火（或按空格）
+```
 
-| 模型（可填别名或全名） | 说明 |
+然后在任意 Agent / 客户端中配置：
+
+- **Base URL**：`http://127.0.0.1:55990/v1`
+- **API Key**：你在 CommandCode Studio 生成的 Key（登录 <https://commandcode.ai/studio/> → API keys → Generate API key）
+
+选择模型即可使用（18 个模型，控制台「模型矩阵」里点击模型名一键复制）。
+
+## 界面与功能
+
+| 区域 | 说明 |
 |---|---|
-| `deepseek-v4-pro` / `deepseek-v4-flash` | DeepSeek V4 系列，1M 上下文 |
-| `kimi-k2.6` / `kimi-k2.5` | Moonshot Kimi |
-| `glm-5.1` / `glm-5` | 智谱 GLM |
-| `qwen-3.6-max` / `qwen-3.7-max` / `qwen-3.7-max-free` | 通义千问 |
-| `gemini-3.1-flash-lite` | Google Gemini |
-| `minimax-m3` / `minimax-m2.7` / `minimax-m2.5` | MiniMax |
-| `step-3.7-flash` / `step-3.5-flash` | 阶跃星辰 |
-| `mimo-v2.5` / `mimo-v2.5-pro` | 小米 MiMo |
+| 代理核心 | 3D 全息反应堆，**点击点火 / 停堆**（快捷键空格）；点火琥珀色充能、运行翠绿脉冲、故障红色告警 |
+| 链路配置 | Base URL 一键复制；API Key 可选（点火时自动记住到 `api-key.txt`，留空则用客户端自己的 Key） |
+| 链路监测 | 本地真实流经统计：总消耗 / 今日 / 运行次数 + 分模型消耗条形图，数字滚动动画 |
+| 模型矩阵 | 18 个模型按厂商分组（DeepSeek / Kimi / GLM / Qwen / Gemini / MiniMax / 阶跃 / MiMo），点击复制 |
+| 运行日志 | 启停与错误事件流，分级着色；「开机自启」开关也在这里 |
+| 氛围 | 星空 + 透视网格地板 + 星云 + 扫描线背景，面板随鼠标 3D 视差，开机自检动画 |
 
-完整列表与短别名见控制台内「可用模型」区（点击模型名一键复制）。
+其他细节：深色沉浸式标题栏（Win10 1809+）、高 DPI 自适应、关窗自动优雅停堆、
+检测到开机自启的后台实例时自动接入监测（外部实例态，可一键停止）。
 
-## 文件说明
+## 命令行用法
 
-| 文件 | 用途 |
-|---|---|
-| `CommandCode代理-单文件版.hta` | **唯一界面**：内嵌代理组件，双击即用（自动释放并启动） |
-| `启动代理.bat` / `停止代理.bat` | 命令行启停 |
-| `设置开机自启.bat` / `取消开机自启.bat` | 开机自动后台运行 |
-| `生成单文件版.py` + `hta_template.txt` | 重新打包单文件版的构建工具 |
+```bat
+CommandCodeProxyDeck.exe                  :: 打开控制台（GUI）
+CommandCodeProxyDeck.exe -headless        :: 无窗口后台模式（开机自启用的就是这个）
+CommandCodeProxyDeck.exe -port 55990      :: 指定端口（默认 55990）
+CommandCodeProxyDeck.exe -api-key <KEY>   :: 指定默认 API Key
+启动代理.bat / 停止代理.bat               :: 命令行启停（后台模式）
+设置开机自启.bat / 取消开机自启.bat       :: 登录 Windows 自动后台运行
+```
+
+## 技术架构
+
+```
+CommandCodeProxyDeck.exe（单个独立 exe，~15MB）
+├─ app/                  WebView2 窗口 + JS 桥（github.com/webview/webview_go，纯 Go，无 CGO/DLL）
+│   ├─ ui.html           内嵌界面（go:embed，经 127.0.0.1 随机端口提供给 WebView2）
+│   ├─ bridge.go         启停控制 / 状态 / 统计透传 / 开机自启 / 剪贴板
+│   └─ platform_windows.go  深色标题栏 / DPI / 消息框
+└─ internal/proxy + internal/server   上游代理核心，进程内直接运行
+```
+
+- 界面依赖系统自带的 **WebView2 运行时**（Win10/11 随系统/Edge 预装），所以工具体积不膨胀
+- 对比旧 HTA 版：不再需要释放内置 exe（13MB → 单程序秒开）、不再依赖 mshta/ActiveX/JScript
+- 数据文件（均与 exe 同目录）：`api-key.txt`（记住的 Key）、`stats.json`（使用统计，旧版 `bin\stats.json` 会自动迁移）
 
 ## 常见问题（FAQ）
 
 ### 报错 `400 ... expected number to be <=200000 at "params.max_tokens"`，我是不是被封了？
 
-**不是被封号。** 这是**请求参数校验错误**，与账号、用量、封号无关（封号/欠费会是 401/403/429）。
+**不是被封号。** 这是请求参数校验错误（封号/欠费会是 401/403/429）。部分 Agent 会按模型上下文窗口发送超大 `max_tokens`，超过接口上限 200,000 被拒绝。**v1.0.1 起代理已自动钳制**，请求全部合法化，输出空间不受影响（API 上限本就是 20 万）。
 
-原因：部分 Agent（如 Codex）**无法设置"最大输出 token"**，会按模型上下文窗口（如 1M）发送超大 `max_tokens`（如 100 万），超过 CommandCode 接口上限 **200,000** 而被直接拒绝，表现为"任务突然中断"。
+### SmartScreen 或杀软（火绒/360）提示？
 
-**v1.0.1 起代理已自动钳制** `max_tokens` 到 200000（即 API 上限），请求全部合法化，不再需要手动设置。输出空间不受任何影响（API 上限本就是 20 万），正常请求完全无感。
+本程序是未签名的开源工具，首次运行 SmartScreen 选「更多信息 → 仍要运行」；「开机自启」会向启动文件夹写入脚本，杀软询问时选允许即可。代码完全开源，可自行审计后用 `构建EXE.bat` 重新编译。
 
-### 钳制 max_tokens 会不会截断长任务的输出？
+### 提示缺少 WebView2 运行时？
 
-不会。`max_tokens` 是"单次回复的输出上限"，200000 就是该 API 的最大允许值；钳制只是让请求合法，并不会截断任何输出。正常任务（几百~几千 token）完全不受影响，需要超长输出时依然能用到满额 20 万。
-
-### 杀毒软件报警或文件被清理？
-
-单文件版"内嵌可执行文件"、开机自启脚本"写入启动项"容易被火绒/360 等安全软件判定为可疑。首次使用若弹窗请选择"允许/信任"，或把工具目录加入杀软信任区；文件被清理的话，加完信任区重新下载/生成即可。
+极少见（被精简系统卸载了）。程序会弹出提示并打开官方下载页，安装后即可使用。
 
 ### 为什么不能直接用官方文档里的接口？
 
@@ -72,16 +92,11 @@
 
 ### 支持哪些系统？
 
-仅 Windows（HTA 依赖系统自带 mshta 引擎）。使用需有自己的 CommandCode 账号与套餐（普通套餐即可）。
+仅 Windows。使用需有自己的 CommandCode 账号与套餐（普通套餐即可）。
 
 ## 更新日志
 
-### v1.0.1（2026-08-06）
-- **修复**：`max_tokens` 超限导致的 400 错误——代理层统一钳制到 200000（API 上限），并新增单元测试
-- 单文件版 / 多文件版同步更新（内嵌修复后的代理）
-
-### v1.0.0（2026-08-06）
-- 首个发布：单文件版 HTA、HTML 控制台、启停/开机自启脚本、单文件构建工具
+见 [RELEASE_NOTES.md](RELEASE_NOTES.md)。
 
 ## 致谢
 

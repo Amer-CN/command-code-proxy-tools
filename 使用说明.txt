@@ -1,41 +1,30 @@
-CommandCode 代理使用说明
-========================
+CommandCode 代理控制台 v2.0（WebView2 独立程序版）
+=================================================
 
-这个文件夹里是 command-code-proxy-server（本地代理）加上便捷工具。
-代理的作用：把官方只对"Provider 套餐"开放的接口，转成本地接口
-http://127.0.0.1:55990/v1 —— 它实际走的是 CommandCode CLI 的接口
-(/alpha/generate)，所以普通套餐也能用，并且能调用下面这些模型
-（Kimi、GLM、MiniMax、DeepSeek、Qwen、StepFun、小米MiMo、Gemini 等 17 个）。
+【首次使用】
+1. 双击「构建EXE.bat」自动生成 CommandCodeProxyDeck.exe（需本机装有 Go）。
+2. 双击 CommandCodeProxyDeck.exe 打开控制台，点击左侧「能量核心」点火。
+3. 在你的 Agent / 客户端里配置：
+     Base URL: http://127.0.0.1:55990/v1
+     API Key : 你在 commandcode.ai/studio 生成的 Key
 
-文件清单：
-- CommandCode代理-单文件版.hta   ★ 唯一界面：双击即用，自动释放内置代理组件并启动
-- 启动代理.bat / 停止代理.bat   命令行启停
-- 设置开机自启.bat / 取消开机自启.bat  开机自动后台运行
-- bin\command-code-proxy.exe    代理本体（预编译，无需安装 Go）
-- 生成单文件版.py / hta_template.txt   重新打包单文件版用的构建工具
+【界面速览】
+- 能量核心：点击点火 / 停堆（快捷键：空格）
+- 链路配置：Base URL 一键复制；API Key 可选，点火时自动记住
+- 链路监测：本地真实流经 token 统计（总消耗 / 今日 / 次数 / 分模型条形图）
+- 模型矩阵：18 个模型按厂商分组，点击即复制模型名
+- 运行日志：启停与错误事件流；「开机自启」开关在日志区右上角
 
-日常使用（单文件版）：
-1. 双击 CommandCode代理-单文件版.hta
-2. 首次打开会自动释放内置组件（约 10~60 秒），随后自动启动代理，状态变绿
-3. 在任意 Agent / 客户端中配置：
-   Base URL : http://127.0.0.1:55990/v1
-   API Key  : 你在 CommandCode Studio 生成的 Key
-   （或者把 Key 填进控制台输入一次，代理会记住，见 api-key.txt）
-4. 模型名可填：deepseek-v4-pro / kimi-k2.6 / glm-5.1 / qwen-3.6-max / gemini-3.1-flash-lite 等
+【文件说明】
+CommandCodeProxyDeck.exe ... 主程序（控制台 + 代理核心一体）
+api-key.txt ................ 记住的 API Key（可选功能，勿泄露）
+stats.json ................. 本地使用统计
+启动代理.bat / 停止代理.bat  命令行启停（无窗口后台模式）
+设置/取消开机自启.bat ...... 登录 Windows 自动后台运行
+构建EXE.bat ................ 一键构建脚本（go get 依赖 + 编译）
 
-杀毒软件提示（重要）：
-- 单文件版"内嵌可执行文件"、开机自启脚本"写入启动项"这两个特征
-  会被火绒/360 等杀软判定为可疑。首次使用若被杀软询问，选择"允许/信任"；
-  若文件被直接清理，请把本文件夹加入杀软的"信任区/白名单"后重新生成。
-- 发给别人时，对方机器同样可能拦截，请一并告知对方。
-
-常见问题：
-- 报错 400 "Too big: expected number to be <=200000 at params.max_tokens"：
-  不是被封号，是请求参数校验错误（封号会是 401/403/429）。原因是部分 Agent 无法设置
-  最大输出 token，按模型 1M 窗口发了超大 max_tokens。v1.0.1 起代理已自动钳制到 200000，
-  无需手动设置，输出空间不受影响。
-- 停止代理后客户端连不上：正常，重启代理即可。
-- 端口被占用：检查是否已启动过一次，或在任务管理器结束 command-code-proxy.exe。
-- 换电脑 / 移动文件夹：整个文件夹拷走即可，无需重装；
-  单文件版会自动在当前位置释放组件。
-- 仅支持 Windows；文件夹路径建议不要包含空格。
+【注意】
+- 仅支持 Windows；界面依赖系统自带的 WebView2 运行时（一般已随系统/Edge 预装）。
+- 未签名开源程序，SmartScreen / 杀软首次提示选「仍要运行 / 允许」。
+- 本工具只是接口转换，需自备 CommandCode 套餐（普通套餐即可）。
+- 平时挂着即可（内存约 30MB）；随时可停堆，不影响数据，重新点火即恢复。
