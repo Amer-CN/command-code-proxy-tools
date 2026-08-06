@@ -31,6 +31,10 @@ type usageSummary struct {
 	TotalRuns   int64           `json:"totalRuns"`
 	TokensIn    int64           `json:"tokensIn"`
 	TokensOut   int64           `json:"tokensOut"`
+	// 官网明细按模型聚合（items 解析，字段缺失则空 map）
+	ModelBreakdown map[string]itemTokens `json:"modelBreakdown,omitempty"`
+	// 今日（本地时区）总 token（items 聚合）
+	TodayTokens int64 `json:"todayTokens"`
 }
 
 // handleUsage queries CommandCode's usage endpoints (same calls the CLI /usage
@@ -176,9 +180,10 @@ func (p *Proxy) HandleUsage(w http.ResponseWriter, r *http.Request) {
 
 	// 5. recent usage records list (/internal/usage) — same call the official
 	// Usage page makes. Returns items with per-request tokens/cost/model/status.
+	// 拉大 limit 以便前端按模型/日期聚合（一次最多 500 条）。
 	limit := r.URL.Query().Get("limit")
 	if limit == "" {
-		limit = "10"
+		limit = "500"
 	}
 	listParams := map[string]string{"limit": limit, "orgId": orgID}
 	if c := r.URL.Query().Get("cursor"); c != "" {
@@ -202,10 +207,100 @@ func (p *Proxy) HandleUsage(w http.ResponseWriter, r *http.Request) {
 			sum.TotalRuns = list.Total.TotalRuns
 			sum.TokensIn = list.Total.TokensIn
 			sum.TokensOut = list.Total.TokensOut
+			// 结构化 items：按模型聚合 + 今日聚合（防御式解析，字段缺失即忽略）
+			sum.ModelBreakdown = modelBreakdown(list.Items)
+			sum.TodayTokens = todayTokens(list.Items)
 		}
 	}
 
 	p.writeJSON(w, sum)
+}
+
+// itemTokens 从一条 usage 明细里提取 token 数（兼容多种字段名）。
+type itemTokens struct {
+	model     string
+	in        int64
+	out       int64
+	cacheRead int64
+	cost      float64
+	day       string // YYYY-MM-DD（本地时区），无时间字段则为空
+}
+
+// modelBreakdown 按模型聚合 items 的 token 消耗（官网口径，含缓存）。
+func modelBreakdown(itemsRaw json.RawMessage) map[string]itemTokens {
+	out := map[string]itemTokens{}
+	var items []map[string]json.RawMessage
+	if err := json.Unmarshal(itemsRaw, &items); err != nil {
+		return out
+	}
+	for _, it := range items {
+		var m string
+		if v, ok := it["model"]; ok {
+			_ = json.Unmarshal(v, &m)
+		}
+		if m == "" {
+			m = "unknown"
+		}
+		itm := out[m]
+		itm.model = m
+		for _, f := range []struct{ dst *int64; keys []string }{
+			{&itm.in, []string{"inputTokens", "input_tokens", "tokensIn"}},
+			{&itm.out, []string{"outputTokens", "output_tokens", "tokensOut"}},
+			{&itm.cacheRead, []string{"cacheReadTokens", "cache_read_tokens"}},
+		} {
+			for _, k := range f.keys {
+				if v, ok := it[k]; ok {
+					var n int64
+					if json.Unmarshal(v, &n) == nil {
+						*f.dst += n
+						break
+					}
+				}
+			}
+		}
+		if v, ok := it["cost"]; ok {
+			var c float64
+			if json.Unmarshal(v, &c) == nil {
+				itm.cost += c
+			}
+		} else if v, ok := it["amount"]; ok {
+			var c float64
+			if json.Unmarshal(v, &c) == nil {
+				itm.cost += c
+			}
+		}
+		// 时间字段（createdAt / created_at / time / timestamp）
+		for _, k := range []string{"createdAt", "created_at", "time", "timestamp"} {
+			if v, ok := it[k]; ok {
+				var ts string
+				if json.Unmarshal(v, &ts) == nil && ts != "" {
+					itm.day = tsToDay(ts)
+					break
+				}
+			}
+		}
+		out[m] = itm
+	}
+	return out
+}
+
+// todayTokens 汇总今天（本地时区）所有模型的 token。
+func todayTokens(itemsRaw json.RawMessage) int64 {
+	var total int64
+	for _, mb := range modelBreakdown(itemsRaw) {
+		if mb.day == time.Now().Format("2006-01-02") {
+			total += mb.in + mb.out + mb.cacheRead
+		}
+	}
+	return total
+}
+
+// tsToDay 把 RFC3339 时间戳转为本地日期 YYYY-MM-DD；解析失败返回空串。
+func tsToDay(ts string) string {
+	if t, err := time.Parse(time.RFC3339, ts); err == nil {
+		return t.Local().Format("2006-01-02")
+	}
+	return ""
 }
 
 func (p *Proxy) writeJSON(w http.ResponseWriter, v any) {

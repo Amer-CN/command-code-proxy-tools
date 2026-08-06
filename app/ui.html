@@ -687,8 +687,32 @@ function vendorOf(id){ return (id.split("/")[0]||"").toLowerCase(); }
 function vendorColor(id){ return VENDOR_COLORS[vendorOf(id)] || "#00e5ff"; }
 
 async function refreshStats(){
-  const d = await call("Stats");
   const wrap = $("barsWrap");
+  // ---- 官网权威优先：/v1/usage（账单金额、总 token、今日、按模型明细）----
+  let u = null;
+  try { u = await call("Usage"); } catch(e){}
+  const official = !!(u && !u.ok===false
+    && !(u.errors && u.errors.length > 0)
+    && (u.totalTokens > 0 || u.costUSD > 0 || u.totalRuns > 0));
+  if (official){
+    $("statCost").textContent = "$" + (u.costUSD||0).toFixed(4);
+    const cr = u.creditsAvailable||0, pct = u.percentUsed||0;
+    $("statCostSub").textContent = (cr>0 ? `官网账单 · 可用 $${cr.toFixed(2)} · 已用 ${pct.toFixed(1)}%` : "官网账单");
+    countUp($("statTotal"), u.totalTokens||0);
+    $("statTotalSub").textContent = `↑${fmt(u.tokensIn||0)} / ↓${fmt(u.tokensOut||0)} · 官网`;
+    countUp($("statToday"), u.todayTokens||0);
+    $("statTodaySub").textContent = "今日（官网明细）";
+    countUp($("statRuns"), u.totalRuns||0);
+    $("statModels").textContent = (u.planLabel||"未命名计划") + (u.daysLeft ? ` · 剩 ${u.daysLeft} 天` : "");
+    const mb = u.modelBreakdown || {};
+    const mkeys = Object.keys(mb);
+    if (!mkeys.length){ wrap.innerHTML = '<div class="bars-empty">// 官网暂无明细数据</div>'; return; }
+    renderBars(mkeys.map(k=>({name:k, ...mb[k],
+      sum:(mb[k].in||0)+(mb[k].out||0)+(mb[k].cacheRead||0)})), false);
+    return;
+  }
+  // ---- 后备：本地统计（官网不可用时）----
+  const d = await call("Stats");
   if (!d || !d.ok && !d.total){ wrap.innerHTML = '<div class="bars-empty">// 代理未运行 · 点火后自动统计</div>'; return; }
   const total = d.total||{}, today = d.today||{}, models = d.models||{};
   const crT = total.cacheRead||0, crD = today.cacheRead||0;
@@ -706,26 +730,36 @@ async function refreshStats(){
   const calibrated = d.calibrated || {};
   const calibNames = Object.keys(calibrated).filter(k=>calibrated[k]);
   const cacheTotal = crT + (total.cacheWrite||0);
-  const subTxt = calibNames.length ? "已用官网校准 " + calibNames.length + " 个模型" : "按官方单价估算";
+  const subTxt = calibNames.length ? "已用官网校准 " + calibNames.length + " 个模型" : "本地估算";
   $("statCostSub").textContent = cacheTotal>0 ? subTxt + ` · 缓存命中 ${(cacheTotal/(total.total||1)*100).toFixed(0)}%` : subTxt;
   if (!names.length){ wrap.innerHTML = '<div class="bars-empty">// 暂无数据 · 跑几轮对话后点刷新</div>'; return; }
-  const sorted = names.map(k=>({name:k, ...models[k], sum:(models[k].inputTokens||0)+(models[k].outputTokens||0)+(models[k].cacheReadTokens||0)}))
-                      .sort((a,b)=>b.sum-a.sum).slice(0,9);
-  const max = sorted[0].sum || 1;
+  renderBars(names.map(k=>({name:k, ...models[k],
+    sum:(models[k].inputTokens||0)+(models[k].outputTokens||0)+(models[k].cacheReadTokens||0)})), true, calibrated);
+}
+
+// 渲染模型消耗条；calib=true 时可点击校准（仅本地后备模式）。
+function renderBars(sorted, calib, calibrated){
+  const wrap = $("barsWrap");
+  const sorted9 = sorted.sort((a,b)=>b.sum-a.sum).slice(0,9);
+  const max = sorted9[0].sum || 1;
   wrap.innerHTML = "";
-  sorted.forEach((m,i)=>{
+  sorted9.forEach((m,i)=>{
     const row = document.createElement("div");
-    row.className = "bar-row calib-row"; row.style.animationDelay = (i*55)+"ms";
-    row.style.cursor = "pointer"; row.title = "点击校准该模型（填官网 Token 数，覆盖本地）";
+    row.className = "bar-row" + (calib ? " calib-row" : "");
+    row.style.animationDelay = (i*55)+"ms";
+    if (calib){ row.style.cursor = "pointer"; row.title = "点击校准该模型（填官网 Token 数，覆盖本地）"; }
+    else { row.title = "官网直连 · 无需校准"; }
     const c = vendorColor(m.name);
-    const isCal = calibrated[m.name];
+    const isCal = calib && calibrated && calibrated[m.name];
     const diffTxt = isCal ? ` <span style="color:#7dffb0">✓已校准</span>` : "";
-    const crPct = m.cacheReadTokens ? ` · ⚡缓存${fmt(m.cacheReadTokens)}` : "";
+    const inT = m.inputTokens || m.in || 0, outT = m.outputTokens || m.out || 0;
+    const crT = m.cacheReadTokens || m.cacheRead || 0;
+    const crPct = crT ? ` · ⚡缓存${fmt(crT)}` : "";
     row.innerHTML = `<span class="name"></span>
       <div class="bar-track"><div class="bar-fill" style="background:linear-gradient(90deg,${c},${c}88);box-shadow:0 0 10px ${c}55"></div></div>
-      <span class="val">${fmt(m.sum)}${diffTxt}<em class="sub2">↑${fmt(m.inputTokens)} / ↓${fmt(m.outputTokens)}${crPct}</em></span>`;
+      <span class="val">${fmt(m.sum)}${diffTxt}<em class="sub2">↑${fmt(inT)} / ↓${fmt(outT)}${crPct}</em></span>`;
     row.querySelector(".name").textContent = m.name;
-    row.onclick = ()=>calibModel(m.name);
+    if (calib) row.onclick = ()=>calibModel(m.name);
     wrap.appendChild(row);
     requestAnimationFrame(()=>requestAnimationFrame(()=>{ row.querySelector(".bar-fill").style.width = Math.max(3, m.sum/max*100) + "%"; }));
   });
@@ -816,6 +850,13 @@ $("baseUrl").onclick = ()=>copyText($("baseUrl").value, "Base URL");
 $("endpoint").onclick = ()=>copyText($("endpoint").textContent, "Base URL");
 $("toggleKey").onclick = ()=>{ const k=$("apiKey"); const show=k.type==="password"; k.type=show?"text":"password"; $("toggleKey").textContent=show?"隐藏":"显示"; };
 $("apiKey").addEventListener("input", e=>{ e.target.dataset.touched = "1"; });
+// 输入后失焦即保存（无需等点火）
+$("apiKey").addEventListener("change", async e=>{
+  const key = e.target.value.trim();
+  const r = await call("SaveKey", key);
+  if (r && r.ok){ const f=$("savedFlag"); f.textContent = "已保存 ✓"; f.classList.add("show"); setTimeout(()=>f.classList.remove("show"), 2000); }
+  else { log("err", "保存 Key 失败: " + (r&&r.msg||"未知错误")); }
+});
 $("refreshStats").onclick = ()=>{ refreshStats(); log("sys","手动刷��链路监测数据"); };
 $("openUsage").onclick = ()=>{ call("Open","https://commandcode.ai/settings/usage"); log("net","已在浏览器打开官方用量页"); };
 $("clearLog").onclick = ()=>{ logStream.innerHTML=""; log("sys","日志已清空"); };

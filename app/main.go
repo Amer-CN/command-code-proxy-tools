@@ -19,6 +19,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/dev2k6/command-code-proxy-server/internal/proxy"
@@ -46,6 +47,12 @@ var (
 // runCoreHeadless 在本进程内启动代理核心并阻塞（headless 后台模式）。
 // 这是"代理本体"：GUI 的 start 会 spawn 本模式作为子进程。
 func runCoreHeadless(host, port, apiKey string) error {
+	// 未显式传 key 时，从 api-key.txt 读取（GUI 保存的 key 自动生效）。
+	if apiKey == "" {
+		if b, err := os.ReadFile(filepath.Join(exeDir(), "api-key.txt")); err == nil {
+			apiKey = strings.TrimSpace(string(b))
+		}
+	}
 	// 端口被非健康进程占用（僵死/残留）→ 先清理。
 	if portBusy(port) {
 		_ = killByPort(port)

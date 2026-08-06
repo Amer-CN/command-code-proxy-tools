@@ -363,6 +363,29 @@ func (a *app) bindAll(w webview.WebView) {
 		}
 		return `{"ok":false,"msg":"代理未运行或无法连接"}`
 	})
+	// 官网权威统计（/v1/usage）：金额、总 token、运行次数、额度、按模型明细。
+	_ = w.Bind("ccUsage", func() string {
+		if s, ok := httpGet(a.baseURL() + "/v1/usage"); ok {
+			return s
+		}
+		return `{"ok":false,"msg":"代理未运行或无法连接"}`
+	})
+	// 立即保存 API Key 到 api-key.txt（无需等点火）。
+	_ = w.Bind("ccSaveKey", func(key string) string {
+		key = strings.TrimSpace(key)
+		if key == "" {
+			if err := os.Remove(a.keyFile()); err != nil && !os.IsNotExist(err) {
+				return jsonErr(err)
+			}
+			a.apiKey = ""
+			return jsonOK("已清除保存的 Key")
+		}
+		if err := os.WriteFile(a.keyFile(), []byte(key), 0o600); err != nil {
+			return jsonErr(err)
+		}
+		a.apiKey = key
+		return jsonOK("API Key 已保存")
+	})
 	_ = w.Bind("ccCalib", func(model, v string) string {
 		v = strings.TrimSpace(v)
 		model = strings.TrimSpace(model)
