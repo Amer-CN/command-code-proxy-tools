@@ -86,5 +86,5 @@
 
 ## 致谢
 
-- 代理核心：[dev2k6/command-code-proxy-server](https://github.com/dev2k6/command-code-proxy-server)
+- [dev2k6/command-code-proxy-server](https://github.com/dev2k6/command-code-proxy-server)
 - 模型与额度：由你的 CommandCode 账号提供
