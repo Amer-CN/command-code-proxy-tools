@@ -97,8 +97,7 @@
 
   <div class="sec">操作</div>
   <div class="btns">
-    <button class="primary" onclick="startProxy()">&#9654; 启动代理</button>
-    <button class="danger" onclick="stopProxy()">&#9632; 停止代理</button>
+    <button id="toggleBtn" class="primary" onclick="toggleProxy()">&#9654; 启动代理</button>
     <button onclick="refreshNow()">&#8635; 刷新状态</button>
   </div>
 
@@ -113,8 +112,12 @@
     1. 点「启动代理」（或双击 启动代理.bat）→ 状态变绿即成功。<br>
     2. 在任意 Agent / 客户端里：Base URL 填 http://127.0.0.1:55990/v1 ，API Key 填 CommandCode Studio 里生成的 Key。<br>
     3. 不想每次填 Key，就在上方输入一次，点「启动代理」时会记住（保存在本目录 api-key.txt，仅本机明文）。<br>
-    4. 「停止代理」后客户端会暂时连不上，属正常现象，随时再启动即可。<br>
-    5. 想开机自动运行：双击 设置开机自启.bat（取消用 取消开机自启.bat）。
+    4. 想开机自动运行：双击 设置开机自启.bat（取消用 取消开机自启.bat）。<br>
+    <br>
+    关于「停止」：<br>
+    · 随时可以放心关闭——不影响任何数据，只是让代理暂时停止服务；客户端会暂时连不上，重新启动即可恢复。<br>
+    · 平时不用管它，一直开着就行（占用内存约 20MB）；想省资源或更新代理时再停止。<br>
+    · 设置了开机自启的话，完全不用手动管，开机自动运行、随时可用。
   </div>
 </div>
 
@@ -177,6 +180,16 @@ function refresh() {
   var running = isRunning();
   var dot = document.getElementById("dot");
   var st = document.getElementById("statusText");
+  var btn = document.getElementById("toggleBtn");
+  if (btn) {
+    if (running) {
+      btn.className = "danger";
+      btn.innerHTML = "&#9632; 停止代理";
+    } else {
+      btn.className = "primary";
+      btn.innerHTML = "&#9654; 启动代理";
+    }
+  }
   if (running) {
     dot.className = "dot green";
     st.innerHTML = "运行中 · http://127.0.0.1:55990 可用";
@@ -231,6 +244,10 @@ function stopProxy() {
     log("停止失败: " + e.message);
   }
   setTimeout("refresh()", 1000);
+}
+
+function toggleProxy() {
+  if (isRunning()) { stopProxy(); } else { startProxy(); }
 }
 
 (function init() {
