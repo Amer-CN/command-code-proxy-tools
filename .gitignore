@@ -17,3 +17,6 @@ Thumbs.db
 
 # Local convenience (API key cache, logs)
 api-key.txt
+
+# Release build artifacts
+CommandCode代理-便携版.zip
