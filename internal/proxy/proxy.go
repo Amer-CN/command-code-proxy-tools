@@ -245,6 +245,37 @@ func (p *Proxy) HandleChatCompletions(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// forEachLine reads newline-delimited JSON from r and calls fn for each
+// non-empty trimmed line. Unlike bufio.Scanner it has no line-length limit:
+// CommandCode may emit very large tool events when continuing long threads.
+func forEachLine(r io.Reader, ctx context.Context, fn func(string) error) error {
+	reader := bufio.NewReader(r)
+	for {
+		lineBytes, err := reader.ReadBytes('\n')
+		if len(lineBytes) > 0 {
+			line := strings.TrimSpace(string(lineBytes))
+			if line != "" {
+				if ferr := fn(line); ferr != nil {
+					return ferr
+				}
+			}
+		}
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return err
+		}
+		if ctx != nil {
+			select {
+			case <-ctx.Done():
+				return nil
+			default:
+			}
+		}
+	}
+}
+
 // StreamResponse handles streaming response from CommandCode to OpenAI SSE
 func (p *Proxy) StreamResponse(w http.ResponseWriter, r *http.Request, ccResp *http.Response, requestID, model string, created int64) {
 	flusher, ok := w.(http.Flusher)
@@ -258,28 +289,16 @@ func (p *Proxy) StreamResponse(w http.ResponseWriter, r *http.Request, ccResp *h
 	w.Header().Set("Connection", "keep-alive")
 	w.WriteHeader(http.StatusOK)
 
-	scanner := bufio.NewScanner(ccResp.Body)
-	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
 	sentRole := false
 	toolCallIndex := 0
 	toolCallIndexes := map[string]int{}
 
-	for scanner.Scan() {
-		select {
-		case <-r.Context().Done():
-			return
-		default:
-		}
-
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
+	lineErr := forEachLine(ccResp.Body, r.Context(), func(line string) error {
 		p.debugf("[DEBUG] CommandCode stream line: %s", truncateLog(line))
 
 		var event api.CCStreamEvent
 		if err := json.Unmarshal([]byte(line), &event); err != nil {
-			continue
+			return nil
 		}
 
 		switch event.Type {
@@ -376,7 +395,7 @@ func (p *Proxy) StreamResponse(w http.ResponseWriter, r *http.Request, ccResp *h
 
 		case "tool-call":
 			if _, alreadyStreamed := toolCallIndexes[event.ToolCallID]; alreadyStreamed {
-				continue
+				return nil
 			}
 			idx := toolCallIndex
 			toolCallIndexes[event.ToolCallID] = idx
@@ -427,10 +446,10 @@ func (p *Proxy) StreamResponse(w http.ResponseWriter, r *http.Request, ccResp *h
 		case "error":
 			log.Printf("[ERROR] Stream error: %v", event.Error)
 		}
-	}
-
-	if err := scanner.Err(); err != nil && err != io.EOF {
-		log.Printf("[ERROR] Scanner error: %v", err)
+		return nil
+	})
+	if lineErr != nil {
+		log.Printf("[ERROR] Stream read error: %v", lineErr)
 	}
 }
 
@@ -443,9 +462,6 @@ func (p *Proxy) WriteSSE(w io.Writer, flusher http.Flusher, resp api.OpenAIChatR
 
 // NonStreamResponse handles non-streaming response
 func (p *Proxy) NonStreamResponse(w http.ResponseWriter, ccResp *http.Response, requestID, model string, created int64) {
-	scanner := bufio.NewScanner(ccResp.Body)
-	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
-
 	var content strings.Builder
 	var inputTokens, outputTokens int
 	var hasToolCalls bool
@@ -453,16 +469,12 @@ func (p *Proxy) NonStreamResponse(w http.ResponseWriter, ccResp *http.Response, 
 	toolCallByID := map[string]int{}
 	toolInputBuffers := map[string]*strings.Builder{}
 
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
+	lineErr := forEachLine(ccResp.Body, nil, func(line string) error {
 		p.debugf("[DEBUG] CommandCode stream line: %s", truncateLog(line))
 
 		var event api.CCStreamEvent
 		if err := json.Unmarshal([]byte(line), &event); err != nil {
-			continue
+			return nil
 		}
 
 		switch event.Type {
@@ -534,6 +546,10 @@ func (p *Proxy) NonStreamResponse(w http.ResponseWriter, ccResp *http.Response, 
 		case "error":
 			log.Printf("[ERROR] Stream error: %v", event.Error)
 		}
+		return nil
+	})
+	if lineErr != nil {
+		log.Printf("[ERROR] Stream read error: %v", lineErr)
 	}
 
 	msg := &api.OpenAIMessage{
