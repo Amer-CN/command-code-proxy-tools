@@ -3,6 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/dev2k6/command-code-proxy-server/internal/proxy"
 	"github.com/dev2k6/command-code-proxy-server/internal/server"
@@ -27,6 +29,11 @@ func main() {
 
 	proxy := proxy.NewProxy(*apiKey)
 	proxy.Debug = debugLogging
+
+	// Persist local usage stats next to the executable so counts survive restarts.
+	if exePath, err := os.Executable(); err == nil {
+		proxy.SetStatsFile(filepath.Join(filepath.Dir(exePath), "stats.json"))
+	}
 
 	srv := server.NewServer(proxy)
 	srv.SetPort(*port)

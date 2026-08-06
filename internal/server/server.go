@@ -27,6 +27,7 @@ func NewServer(proxy *proxy.Proxy) *Server {
 	mux.HandleFunc("/v1/responses", logger(proxy.HandleResponses))
 	mux.HandleFunc("/v1/models", logger(proxy.HandleModels))
 	mux.HandleFunc("/v1/usage", logger(proxy.HandleUsage))
+	mux.HandleFunc("/v1/stats", logger(proxy.HandleStats))
 	mux.HandleFunc("/health", logger(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"status":"ok"}`))

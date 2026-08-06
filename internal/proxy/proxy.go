@@ -64,6 +64,7 @@ type Proxy struct {
 	BaseURL string
 	Client  *http.Client
 	Debug   bool
+	Stats   *UsageStats
 }
 
 // NewProxy creates a new proxy instance
@@ -72,7 +73,17 @@ func NewProxy(apiKey string) *Proxy {
 		APIKey:  apiKey,
 		BaseURL: defaultBaseURL,
 		Client:  &http.Client{Timeout: defaultTimeout},
+		Stats:   NewUsageStats(""),
 	}
+}
+
+// SetStatsFile sets the disk path used to persist local usage stats.
+func (p *Proxy) SetStatsFile(path string) {
+	if path == "" {
+		return
+	}
+	p.Stats.file = path
+	p.Stats.load()
 }
 
 // BuildRequest builds the CommandCode request body
@@ -578,6 +589,11 @@ func (p *Proxy) NonStreamResponse(w http.ResponseWriter, ccResp *http.Response, 
 			CompletionTokens: outputTokens,
 			TotalTokens:      inputTokens + outputTokens,
 		},
+	}
+
+	// Record local usage stats (counts tokens CommandCode actually reported).
+	if inputTokens > 0 || outputTokens > 0 {
+		p.Stats.Record(model, int64(inputTokens), int64(outputTokens))
 	}
 
 	w.Header().Set("Content-Type", "application/json")

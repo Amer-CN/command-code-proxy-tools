@@ -114,9 +114,9 @@
   <div class="sec">可用模型 <span id="modelCount" style="color:#5f7298"></span></div>
   <div id="modelList">代理未运行时无法获取</div>
 
-  <div class="sec">已使用额度 <button class="small" style="margin-left:8px" onclick="loadUsage()">&#8635; 刷新</button></div>
+  <div class="sec">本地使用统计 <button class="small" style="margin-left:8px" onclick="loadStats()">&#8635; 刷新</button> <button class="small" onclick="openUsagePage()">&#128279; 官方用量页</button></div>
   <div id="usageBox" style="background:#161d2e;border:1px solid #24304a;border-radius:8px;padding:12px 16px;font-size:13px;line-height:2;color:#a8c0e8;">
-    代理未运行时无法获取。<br>启动代理后点「刷新」查看（需已配置 API Key）。
+    代理启动后自动统计经过它的 token 用量。<br>启动代理并运行几次对话后，点「刷新」查看。
   </div>
 
   <div class="sec">运行日志</div>
@@ -212,61 +212,55 @@ function toggleModelRef() {
 }
 
 // ---- 已使用额度 ----
-function loadUsage() {
+// 额度数据只能从官方登录网页读取（API Key 无法查询 org=null 的个人账号额度），
+// 这里提供一键打开官方用量页。
+function openUsagePage() {
+  try {
+    shell.Run("https://commandcode.ai/settings/usage", 1, false);
+    log("已在浏览器打开官方用量页（登录后查看完整额度）");
+  } catch (e) {
+    log("打开失败: " + e.message);
+  }
+}
+
+// ---- 本地使用统计 ----
+function loadStats() {
   var box = document.getElementById("usageBox");
   if (!isRunning()) {
     box.innerHTML = "代理未运行，请先「启动代理」。";
     return;
   }
-  var key = document.getElementById("apiKey").value;
-  if (key == "") {
-    box.innerHTML = "请先在「服务配置」里填写 API Key，再点刷新。";
-    return;
-  }
-  box.innerHTML = "正在查询…（可能需要几秒）";
   try {
     var x = new ActiveXObject("MSXML2.XMLHTTP");
-    x.open("GET", "http://127.0.0.1:55990/v1/usage", false);
-    x.setRequestHeader("Authorization", "Bearer " + key);
+    x.open("GET", "http://127.0.0.1:55990/v1/stats", false);
     x.send();
-    if (x.status != 200) {
-      box.innerHTML = "查询失败（HTTP " + x.status + "）。请确认 API Key 正确。";
-      return;
-    }
+    if (x.status != 200) { box.innerHTML = "查询失败（HTTP " + x.status + "）"; return; }
     var d = eval("(" + x.responseText + ")");
-    if (d.errors && d.errors.length > 0 && !d.whoami) {
-      box.innerHTML = "查询失败：" + d.errors[0] + "<br>请确认 API Key 有效。";
-      return;
-    }
+    var models = d.models || {};
+    var totalIn = 0, totalOut = 0, totalRuns = 0, names = [];
+    for (var k in models) { if (models.hasOwnProperty(k)) {
+      totalIn += models[k].inputTokens || 0;
+      totalOut += models[k].outputTokens || 0;
+      totalRuns += models[k].runs || 0;
+      names.push(k);
+    }}
     var html = "";
-    if (d.planLabel) html += "&#128179; 套餐：" + d.planLabel + "<br>";
-    html += "&#128200; 已使用金额：$" + d.costUSD.toFixed(2) + "<br>";
-    html += "&#128176; 剩余额度：$" + d.creditsAvailable.toFixed(2) + "<br>";
-    if (d.creditsTotal > 0) {
-      html += "&#127919; 使用比例：" + d.percent.toFixed(1) + "%<br>";
-      html += "&#128293; 额度总盘：$" + d.creditsTotal.toFixed(2) + "<br>";
-    }
-    if (d.daysLeft != null) html += "&#128197; 本期剩余：" + d.daysLeft + " 天<br>";
-    if (d.totalTokens > 0 || d.totalRuns > 0) {
-      html += "&#128200; 总 Token：" + d.totalTokens.toLocaleString() + "<br>";
-      if (d.tokensIn > 0 || d.tokensOut > 0) {
-        html += "&#8593; 输入：" + d.tokensIn.toLocaleString() + " ／ &#8595; 输出：" + d.tokensOut.toLocaleString() + "<br>";
-      }
-      html += "&#128213; 运行次数：" + d.totalRuns + "<br>";
-    }
-    if (d.items && d.items.length > 0) {
-      html += "<br><b>最近明细（" + d.items.length + " 条）</b><table style='width:100%;border-collapse:collapse;font-size:11px;margin-top:6px'>";
-      html += "<tr style='color:#5f7298'><td style='padding:2px 4px;border-bottom:1px solid #24304a'>时间</td><td style='padding:2px 4px;border-bottom:1px solid #24304a'>模型</td><td style='padding:2px 4px;border-bottom:1px solid #24304a'>输入</td><td style='padding:2px 4px;border-bottom:1px solid #24304a'>输出</td><td style='padding:2px 4px;border-bottom:1px solid #24304a'>费用</td></tr>";
-      for (var i = 0; i < d.items.length; i++) {
-        var it = d.items[i];
-        var t = "";
-        try { t = new Date(it.time || it.createdAt || it.timestamp).toLocaleString(); } catch (e) { t = ""; }
-        var cost = (it.totalCost != null) ? "$" + parseFloat(it.totalCost).toFixed(4) : "-";
-        html += "<tr><td style='padding:2px 4px;border-bottom:1px solid #161d2e'>" + t + "</td><td style='padding:2px 4px;border-bottom:1px solid #161d2e'>" + (it.model || "-") + "</td><td style='padding:2px 4px;border-bottom:1px solid #161d2e'>" + (it.tokensIn != null ? it.tokensIn : "-") + "</td><td style='padding:2px 4px;border-bottom:1px solid #161d2e'>" + (it.tokensOut != null ? it.tokensOut : "-") + "</td><td style='padding:2px 4px;border-bottom:1px solid #161d2e'>" + cost + "</td></tr>";
+    html += "&#128200; <b>总消耗 Token：" + (totalIn + totalOut).toLocaleString() + "</b><br>";
+    html += "&#8593; 输入：" + totalIn.toLocaleString() + " ／ &#8595; 输出：" + totalOut.toLocaleString() + "<br>";
+    html += "&#128197; 今日消耗：" + (d.today.total||0).toLocaleString() + "（&#8593;" + (d.today.input||0).toLocaleString() + " ／ &#8595;" + (d.today.output||0).toLocaleString() + "）<br>";
+    html += "&#128213; 运行次数：" + totalRuns + "<br>";
+    if (names.length > 0) {
+      html += "<br><b>各模型明细</b><table style='width:100%;border-collapse:collapse;font-size:11px;margin-top:6px'>";
+      html += "<tr style='color:#5f7298'><td style='padding:2px 4px;border-bottom:1px solid #24304a'>模型</td><td style='padding:2px 4px;border-bottom:1px solid #24304a'>次数</td><td style='padding:2px 4px;border-bottom:1px solid #24304a'>输入</td><td style='padding:2px 4px;border-bottom:1px solid #24304a'>输出</td></tr>";
+      for (var i = 0; i < names.length; i++) {
+        var m = models[names[i]];
+        html += "<tr><td style='padding:2px 4px;border-bottom:1px solid #161d2e'>" + names[i] + "</td><td style='padding:2px 4px;border-bottom:1px solid #161d2e'>" + (m.runs||0) + "</td><td style='padding:2px 4px;border-bottom:1px solid #161d2e'>" + (m.inputTokens||0).toLocaleString() + "</td><td style='padding:2px 4px;border-bottom:1px solid #161d2e'>" + (m.outputTokens||0).toLocaleString() + "</td></tr>";
       }
       html += "</table>";
+      html += "<br><span style='color:#5f7298'>提示：这是代理本地统计（真实流经数据）。官方金额在官网查看（登录后自动累计）。</span>";
+    } else {
+      html += "<br><span style='color:#5f7298'>暂无数据——启动代理并运行几次对话后刷新。</span>";
     }
-    if (d.usageUrl) html += "<br>&#128279; 详细用量：<a href='" + d.usageUrl + "' style='color:#7db3ff'>官方网页</a>（登录查看）<br>";
     box.innerHTML = html;
   } catch (e) {
     box.innerHTML = "查询失败：" + e.message;
