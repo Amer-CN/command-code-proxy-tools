@@ -2,9 +2,11 @@ package proxy
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
@@ -148,6 +150,13 @@ func (p *Proxy) HandleStats(w http.ResponseWriter, r *http.Request) {
 		totalIn += ms.InputTokens
 		totalOut += ms.OutputTokens
 	}
+
+	// 金额估算（官方定价 per 1M tokens，USD；无价格的模型按 0 计）
+	cost := estimateCost(snap.Models)
+
+	// 自定义校准值（用户从官网读取后填入，保存到 calibration.txt）
+	calib := p.calibration()
+
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"started":   snap.Started,
@@ -155,5 +164,86 @@ func (p *Proxy) HandleStats(w http.ResponseWriter, r *http.Request) {
 		"total":     map[string]int64{"input": totalIn, "output": totalOut, "total": totalIn + totalOut},
 		"today":     map[string]int64{"input": todayIn, "output": todayOut, "total": todayIn + todayOut},
 		"statsFile": filepath.Base(p.Stats.file),
+		"cost":      cost, // 估算金额（按官方单价 × 本地 token）
+		"calibration": map[string]any{
+			"official": calib, // 用户填的官网金额（0 = 未填）
+		},
 	})
+}
+
+// pricing 按模型 ID（短名或全名）返回每百万 token 的输入/输出价格（USD）。
+// 来源：https://commandcode.ai/docs/resources/pricing-limits（2026-08 官方定价）
+var pricing = map[string][2]float64{ // [输入, 输出] per 1M tokens
+	"deepseek-v4-flash":   {0.14, 0.28},
+	"deepseek/deepseek-v4-flash": {0.14, 0.28},
+	"deepseek-v4-pro":     {0.435, 0.87},
+	"deepseek/deepseek-v4-pro":   {0.435, 0.87},
+	"kimi-k2.6":           {0.95, 4.00},
+	"moonshotai/kimi-k2.6": {0.95, 4.00},
+	"kimi-k2.5":           {0.60, 3.00},
+	"moonshotai/kimi-k2.5": {0.60, 3.00},
+	"glm-5.1":             {1.40, 4.40},
+	"zai-org/glm-5.1":     {1.40, 4.40},
+	"glm-5":               {1.00, 3.20},
+	"zai-org/glm-5":       {1.00, 3.20},
+	"minimax-m3":          {0.30, 1.20},
+	"minimaxai/minimax-m3": {0.30, 1.20},
+	"minimax-m2.7":        {0.30, 1.20},
+	"minimaxai/minimax-m2.7": {0.30, 1.20},
+	"minimax-m2.5":        {0.30, 1.20},
+	"minimaxai/minimax-m2.5": {0.30, 1.20},
+	"qwen-3.7-max":        {2.50, 7.50},
+	"qwen/qwen3.7-max":    {2.50, 7.50},
+	"qwen-3.7-max-free":   {0.0, 0.0},
+	"qwen/qwen3.7-max-free": {0.0, 0.0},
+	"qwen-3.6-max":        {1.30, 7.80},
+	"qwen/qwen3.6-max-preview": {1.30, 7.80},
+	"qwen-3.6-plus":       {0.50, 3.00},
+	"qwen/qwen3.6-plus":   {0.50, 3.00},
+	"step-3.7-flash":      {0.20, 1.15},
+	"stepfun/step-3.7-flash": {0.20, 1.15},
+	"step-3.5-flash":      {0.10, 0.30},
+	"stepfun/step-3.5-flash": {0.10, 0.30},
+	"mimo-v2.5-pro":       {0.435, 0.87},
+	"xiaomi/mimo-v2.5-pro": {0.435, 0.87},
+	"mimo-v2.5":           {0.14, 0.28},
+	"xiaomi/mimo-v2.5":    {0.14, 0.28},
+	"gemini-3.1-flash-lite": {0.0, 0.0},
+	"google/gemini-3.1-flash-lite": {0.0, 0.0},
+}
+
+// estimateCost 按模型价格表估算总金额（USD）。
+func estimateCost(models map[string]*ModelStat) float64 {
+	var total float64
+	for name, ms := range models {
+		pr := pricing[name]
+		if pr[0] == 0 && pr[1] == 0 {
+			pr = pricing[shortName(name)]
+		}
+		total += float64(ms.InputTokens)/1e6*pr[0] + float64(ms.OutputTokens)/1e6*pr[1]
+	}
+	return total
+}
+
+// shortName 从全名（如 "deepseek/deepseek-v4-flash"）取短名。
+func shortName(full string) string {
+	if i := strings.LastIndex(full, "/"); i >= 0 {
+		return full[i+1:]
+	}
+	return full
+}
+
+// calibration 读取用户填写的官网校准金额（USD），文件与 stats.json 同目录。
+func (p *Proxy) calibration() float64 {
+	dir := filepath.Dir(p.Stats.file)
+	if dir == "." {
+		dir = "."
+	}
+	b, err := os.ReadFile(filepath.Join(dir, "calibration.txt"))
+	if err != nil {
+		return 0
+	}
+	var v float64
+	_, _ = fmt.Sscanf(strings.TrimSpace(string(b)), "%f", &v)
+	return v
 }

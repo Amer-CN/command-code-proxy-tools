@@ -489,12 +489,17 @@ body{
             <div class="stat-card"><div class="k">总消耗 TOKEN</div><div><span class="v" id="statTotal">0</span><span class="u">tok</span></div><div class="sub" id="statTotalSub">↑0 / ↓0</div></div>
             <div class="stat-card vio"><div class="k">今日消耗</div><div><span class="v" id="statToday">0</span><span class="u">tok</span></div><div class="sub" id="statTodaySub">↑0 / ↓0</div></div>
             <div class="stat-card grn"><div class="k">运行次数</div><div><span class="v" id="statRuns">0</span><span class="u">runs</span></div><div class="sub" id="statModels">0 个模型</div></div>
+            <div class="stat-card amb"><div class="k">估算金额</div><div><span class="v" id="statCost">$0.00</span><span class="u">USD</span></div><div class="sub" id="statCostSub">按官方单价估算</div></div>
           </div>
           <div class="bars-head"><span class="t">各模型消耗 TOP</span></div>
           <div class="bars-wrap" id="barsWrap"><div class="bars-empty">// 代理启动后自动统计流经数据</div></div>
           <div class="tel-actions">
             <button class="ibtn" id="refreshStats">↻ 刷新数据</button>
             <button class="ibtn violet" id="openUsage">⌁ 官方用量页</button>
+            <span class="calib-row">
+              <input type="text" id="calibInput" placeholder="官网金额 $ 校准" style="width:110px;background:#0d1420;border:1px solid #2a3a5c;color:#e2e8f0;padding:5px 8px;border-radius:4px;font-size:11px">
+              <button class="ibtn" id="calibSave">保存</button>
+            </span>
           </div>
         </div>
       </section>
@@ -693,6 +698,17 @@ async function refreshStats(){
   const names = Object.keys(models);
   const runs = names.reduce((s,k)=>s+(models[k].runs||0),0);
   countUp($("statRuns"), runs); $("statModels").textContent = names.length + " 个模型";
+  // 金额估算（官方单价 × 本地 token）
+  const cost = d.cost || 0;
+  $("statCost").textContent = "$" + cost.toFixed(4);
+  // 校准：官网金额
+  const calib = d.calibration && d.calibration.official;
+  if (calib > 0){
+    $("statCostSub").textContent = "官网校准 $" + calib.toFixed(2) + " · 差 $" + Math.abs(calib - cost).toFixed(2);
+    if (!$("calibInput").value) $("calibInput").value = calib.toFixed(2);
+  } else {
+    $("statCostSub").textContent = "按官方单价估算";
+  }
   if (!names.length){ wrap.innerHTML = '<div class="bars-empty">// 暂无数据 · 跑几轮对话后点刷新</div>'; return; }
   const sorted = names.map(k=>({name:k, ...models[k], sum:(models[k].inputTokens||0)+(models[k].outputTokens||0)}))
                       .sort((a,b)=>b.sum-a.sum).slice(0,9);
@@ -788,6 +804,12 @@ $("toggleKey").onclick = ()=>{ const k=$("apiKey"); const show=k.type==="passwor
 $("apiKey").addEventListener("input", e=>{ e.target.dataset.touched = "1"; });
 $("refreshStats").onclick = ()=>{ refreshStats(); log("sys","手动刷��链路监测数据"); };
 $("openUsage").onclick = ()=>{ call("Open","https://commandcode.ai/settings/usage"); log("net","已在浏览器打开官方用量页"); };
+$("calibSave").onclick = ()=>{
+  const v = $("calibInput").value.trim();
+  const r = call("Calib", v);
+  if (r && r.ok){ log("ok", v ? "官网校准金额已保存 $" + v : "校准已清除"); toast("ok","校准已保存", v ? "$"+v : "已清除"); refreshStats(); }
+  else { log("err", "保存失败: " + ((r&&r.msg)||"未知")); }
+};
 $("clearLog").onclick = ()=>{ logStream.innerHTML=""; log("sys","日志已清空"); };
 $("avDismiss").onclick = ()=>{ $("avBanner").style.display="none"; call("Dismiss"); log("sys","已关闭安全提示（不再显示）"); };
 $("closeDismiss").onclick = ()=>{ $("closeBanner").style.display="none"; call("DismissCloseHint"); log("sys","已关闭关窗提示（不再显示）"); };

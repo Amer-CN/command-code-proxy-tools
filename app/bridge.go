@@ -363,6 +363,20 @@ func (a *app) bindAll(w webview.WebView) {
 		}
 		return `{"ok":false,"msg":"代理未运行或无法连接"}`
 	})
+	_ = w.Bind("ccCalib", func(v string) string {
+		v = strings.TrimSpace(v)
+		if v == "" {
+			_ = os.Remove(filepath.Join(exeDir(), "calibration.txt"))
+			return jsonOK("已清除校准")
+		}
+		if _, err := strconv.ParseFloat(v, 64); err != nil {
+			return jsonErr(fmt.Errorf("请输入数字金额"))
+		}
+		if err := os.WriteFile(filepath.Join(exeDir(), "calibration.txt"), []byte(v), 0o600); err != nil {
+			return jsonErr(err)
+		}
+		return jsonOK("校准已保存")
+	})
 	_ = w.Bind("ccModels", func() string {
 		if s, ok := httpGet(a.baseURL() + "/v1/models"); ok {
 			return s
