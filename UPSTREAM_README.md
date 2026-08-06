@@ -1,6 +1,3 @@
-<!-- 本文件为上游 dev2k6/command-code-proxy-server 的原始 README.md，仅作存档保留，
-     完整内容与归属均属于原作者。本项目自述见 README.md。 -->
-
 # CommandCode Proxy Server
 
 OpenAI-compatible proxy server for the CommandCode API. It exposes `/v1/chat/completions` and `/v1/models` endpoints so OpenAI-compatible clients can call CommandCode models through a local HTTP server.
