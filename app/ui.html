@@ -224,6 +224,10 @@ body{
 .ibtn.on{color:#8affd8;background:rgba(0,255,163,.09);border-color:rgba(0,255,163,.4)}
 .saved-flag{font-size:10px;color:var(--green);letter-spacing:1px;opacity:0;transition:opacity .3s;flex:none;width:52px;text-align:right}
 .saved-flag.show{opacity:1}
+.key-wrap{flex:1;min-width:0;position:relative;display:flex}
+.key-wrap .holo-input{flex:1;padding-right:38px}
+.key-eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--dim2);cursor:pointer;font-size:13px;padding:4px;line-height:1;opacity:.75;transition:opacity .2s}
+.key-eye:hover{opacity:1;color:var(--cyan)}
 /* 统计卡片 */
 .telemetry{flex:1;display:flex;flex-direction:column;min-height:0}
 .telemetry .p-body{flex:1;display:flex;flex-direction:column;min-height:0}
@@ -478,10 +482,11 @@ body{
           </div>
           <div class="field-row">
             <span class="f-label">API 密钥<span class="en">API KEY</span></span>
-            <input class="holo-input" id="apiKey" type="password" placeholder="可选 · 留空则使用客户端自己发送的 Key" spellcheck="false" autocomplete="off">
-            <button class="ibtn violet" id="toggleKey">显示</button>
+            <div class="key-wrap">
+              <input class="holo-input" id="apiKey" type="password" placeholder="可选 · 留空则使用客户端自己发送的 Key" spellcheck="false" autocomplete="off">
+              <button class="key-eye" id="toggleKey" title="显示/隐藏">👁</button>
+            </div>
             <button class="ibtn grn" id="saveKeyBtn">保存</button>
-            <span class="saved-flag" id="savedFlag">已记住 ✓</span>
           </div>
         </div>
       </section>
@@ -493,7 +498,7 @@ body{
             <div class="stat-card"><div class="k">总消耗 TOKEN</div><div><span class="v" id="statTotal">0</span><span class="u">tok</span></div><div class="sub" id="statTotalSub">↑0 / ↓0</div></div>
             <div class="stat-card vio"><div class="k">今日消耗</div><div><span class="v" id="statToday">0</span><span class="u">tok</span></div><div class="sub" id="statTodaySub">↑0 / ↓0</div></div>
             <div class="stat-card grn"><div class="k">运行次数</div><div><span class="v" id="statRuns">0</span><span class="u">runs</span></div><div class="sub" id="statModels">0 个模型</div></div>
-            <div class="stat-card amb"><div class="k">估算金额</div><div><span class="v" id="statCost">$0.00</span><span class="u">USD</span></div><div class="sub" id="statCostSub">按官方单价估算</div></div>
+            <div class="stat-card amb"><div class="k" id="statCostK">估算金额<span class="en">EST.</span></div><div><span class="v" id="statCost">$0.00</span><span class="u">USD</span></div><div class="sub" id="statCostSub">按官方单价估算</div></div>
           </div>
           <div class="bars-head"><span class="t">各模型消耗 TOP</span></div>
           <div class="bars-wrap" id="barsWrap"><div class="bars-empty">// 代理启动后自动统计流经数据</div></div>
@@ -659,7 +664,7 @@ async function toggleCore(){
       log("ok", r.msg || "代理核心点火成功");
       if (r.msg && r.msg.indexOf("检测到") === 0){ toast("info", "已接入外部实例", ""); }
       else { toast("ok","核心在线", $("baseUrl").value); }
-      if (key){ $("savedFlag").classList.add("show"); setTimeout(()=>$("savedFlag").classList.remove("show"), 2600); }
+      if (key){ log("ok", "Key 已随点火保存"); }
       S.modelsLoaded = false;
       loadModels(); refreshStats();
     } else {
@@ -703,6 +708,7 @@ async function refreshStats(){
     try { d = await call("Stats"); } catch(e){}
     const ltotal = (d&&d.total)||{}, ltoday = (d&&d.today)||{};
     $("statCost").textContent = "$" + (u.costUSD||0).toFixed(4);
+    $("statCostK").innerHTML = "官网金额<span class=\"en\">OFFICIAL</span>";
     const cr = u.creditsAvailable||0, pct = u.percentUsed||0;
     $("statCostSub").textContent = (cr>0 ? `官网账单 · 可用 $${cr.toFixed(2)} · 已用 ${pct.toFixed(1)}%` : "官网账单");
     countUp($("statTotal"), u.totalTokens||0);
@@ -743,6 +749,7 @@ async function refreshStats(){
   // 金额估算（官方单价 × 本地 token；缓存命中按缓存读价 $0.0028/1M 计，约省 98%）
   const cost = d.cost || 0;
   $("statCost").textContent = "$" + cost.toFixed(4);
+  $("statCostK").innerHTML = "估算金额<span class=\"en\">EST.</span>";
   // 校准：覆盖式——有校准的模型已被官网值覆盖（后端已处理），这里只显示标记
   const calibrated = d.calibrated || {};
   const calibNames = Object.keys(calibrated).filter(k=>calibrated[k]);
@@ -865,20 +872,20 @@ $("autostartBtn").onclick = async ()=>{
 $("copyUrl").onclick = ()=>copyText($("baseUrl").value, "Base URL");
 $("baseUrl").onclick = ()=>copyText($("baseUrl").value, "Base URL");
 $("endpoint").onclick = ()=>copyText($("endpoint").textContent, "Base URL");
-$("toggleKey").onclick = ()=>{ const k=$("apiKey"); const show=k.type==="password"; k.type=show?"text":"password"; $("toggleKey").textContent=show?"隐藏":"显示"; };
+$("toggleKey").onclick = ()=>{ const k=$("apiKey"); k.type = k.type==="password" ? "text" : "password"; };
 $("apiKey").addEventListener("input", e=>{ e.target.dataset.touched = "1"; });
 // 显式保存按钮
 $("saveKeyBtn").onclick = async ()=>{
   const key = $("apiKey").value.trim();
   const r = await call("SaveKey", key);
-  if (r && r.ok){ const f=$("savedFlag"); f.textContent = "已保存 ✓"; f.classList.add("show"); setTimeout(()=>f.classList.remove("show"), 2000); log("ok", r.msg || "Key 已保存"); }
+  if (r && r.ok){ log("ok", r.msg || "Key 已保存"); toast("ok","Key 已保存", key ? "已写入 api-key.txt" : "已清除"); }
   else { log("err", "保存 Key 失败: " + ((r&&r.msg)||"未知错误")); }
 };
 // 输入后失焦即保存（无需等点火）
 $("apiKey").addEventListener("change", async e=>{
   const key = e.target.value.trim();
   const r = await call("SaveKey", key);
-  if (r && r.ok){ const f=$("savedFlag"); f.textContent = "已保存 ✓"; f.classList.add("show"); setTimeout(()=>f.classList.remove("show"), 2000); }
+  if (r && r.ok){ log("ok", r.msg || "Key 已保存"); toast("ok","Key 已自动保存",""); }
   else { log("err", "保存 Key 失败: " + (r&&r.msg||"未知错误")); }
 });
 $("refreshStats").onclick = ()=>{ refreshStats(); log("sys","手动刷��链路监测数据"); };
