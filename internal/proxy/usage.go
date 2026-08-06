@@ -40,11 +40,27 @@ type usageSummary struct {
 
 // handleUsage queries CommandCode's usage endpoints (same calls the CLI /usage
 // command makes) and returns a normalized summary. Requires a valid key.
+//
+// 成功结果缓存 usageTTL：GUI 每 8s 轮询一次，若每次都同步拉官网（4 个串行
+// 接口 ~2-3s）会阻塞 webview 消息循环造成界面卡顿；缓存后轮询即时返回。
+const usageTTL = 20 * time.Second
+
 func (p *Proxy) HandleUsage(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		p.writeOpenAIError(w, http.StatusMethodNotAllowed, "Method not allowed", "invalid_request_error")
 		return
 	}
+
+	// 缓存命中：直接返回上次成功结果（官网数字更新慢，20s 延迟可接受）
+	p.usageMu.Lock()
+	if p.usageData != nil && time.Since(p.usageAt) < usageTTL {
+		body := p.usageData
+		p.usageMu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write(body)
+		return
+	}
+	p.usageMu.Unlock()
 
 	apiKey := r.Header.Get("Authorization")
 	if apiKey == "" {
@@ -232,6 +248,14 @@ func (p *Proxy) HandleUsage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	p.writeJSON(w, sum)
+	if len(sum.Errors) == 0 && sum.TotalTokens > 0 {
+		if b, err := json.Marshal(sum); err == nil {
+			p.usageMu.Lock()
+			p.usageData = b
+			p.usageAt = time.Now()
+			p.usageMu.Unlock()
+		}
+	}
 }
 
 // itemTokens 从一条 usage 明细里提取 token 数（兼容多种字段名）。
