@@ -92,6 +92,10 @@ func (p *Proxy) BuildRequest(openAIReq api.OpenAIChatRequest) (api.CCRequestBody
 	if openAIReq.MaxCompletionTokens != nil {
 		maxTokens = *openAIReq.MaxCompletionTokens
 	}
+	// CommandCode rejects max_tokens above 200000; clamp to the API limit
+	if maxTokens > 200000 {
+		maxTokens = 200000
+	}
 
 	tools := ConvertTools(openAIReq.Tools)
 
