@@ -192,7 +192,7 @@ body{
   animation:eqb 1s ease-in-out infinite;animation-play-state:paused;opacity:.25;transition:opacity .5s}
 .reactor-zone.running .eq i{opacity:.9;animation-play-state:running}
 @keyframes eqb{0%,100%{height:4px}50%{height:24px}}
-.hint-line{font-size:11px;color:var(--dim);letter-spacing:1.5px;margin-top:10px}
+.hint-line{font-size:11px;color:var(--dim);letter-spacing:1px;margin-top:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hint-line b{color:#9fd8ff;font-weight:600}
 
 /* ============ 链路配置 / 统计 ============ */
@@ -459,7 +459,7 @@ body{
           <div class="meta"><div class="v" id="pidV">—</div><div class="k">进程 PID</div></div>
         </div>
         <div class="eq" id="eq"></div>
-        <div class="hint-line">点击核心 <b>点火 / 停堆</b> · 快捷键 <b>空格</b></div>
+        <div class="hint-line">点击核心 点火/停堆 · 空格键</div>
       </div>
     </section>
 
@@ -604,7 +604,7 @@ async function copyText(text, label){
 }
 
 /* ---------------- 状态机 ---------------- */
-const S = { phase:"boot", uptime:0, autostart:false };
+const S = { phase:"boot", uptime:0, autostart:false, modelsLoaded:false };
 const PH = {
   idle:     {big:"系统待命",   sub:"CORE STANDBY",            pill:"待命",   pillCls:"idle",     reactor:"",     bigCls:""},
   starting: {big:"点火序列",   sub:"IGNITION SEQUENCE",       pill:"点火中", pillCls:"starting", reactor:"st",   bigCls:"glow-st"},
@@ -642,7 +642,7 @@ async function toggleCore(){
     const takingOver = S.phase === "external";
     setPhase("stopping"); log("sys", takingOver ? "接管外部实例 · 停止后台代理…" : "停堆序列已触发…");
     const r = await call("Stop");
-    if (r.ok){ log("ok", r.msg || "代理核心已停堆"); toast("info", takingOver ? "已接管 · 可再次点击启动" : "核心已停堆",""); }
+    if (r.ok){ log("ok", r.msg || "代理核心已停堆"); toast("info", takingOver ? "已接管 · 可再次点击启动" : "核心已停堆",""); S.modelsLoaded = false; }
     else { log("err", "停止失败: " + (r.msg||"未知错误")); toast("err","停止失败", r.msg||""); }
     await pollState();
   } else {
@@ -654,6 +654,7 @@ async function toggleCore(){
       if (r.msg && r.msg.indexOf("检测到") === 0){ toast("info", "已接入外部实例", ""); }
       else { toast("ok","核心在线", $("baseUrl").value); }
       if (key){ $("savedFlag").classList.add("show"); setTimeout(()=>$("savedFlag").classList.remove("show"), 2600); }
+      S.modelsLoaded = false;
       loadModels(); refreshStats();
     } else {
       setPhase("error");
@@ -754,6 +755,11 @@ async function pollState(){
   else if (st.phase && st.phase !== S.phase){
     if (S.phase === "starting" && st.phase === "idle") { /* 点火失败已由 start 处理 */ }
     setPhase(st.phase);
+  }
+  // 识别到后台代理在运行（GUI 打开时）→ 加载模型与统计
+  if (st.running && !S.modelsLoaded){
+    S.modelsLoaded = true;
+    loadModels(); refreshStats();
   }
   if (st.autostart !== S.autostart){ S.autostart = st.autostart; renderAutostart(); }
   if (st.apiKey && !$("apiKey").dataset.touched && !$("apiKey").value){ $("apiKey").value = st.apiKey; }
