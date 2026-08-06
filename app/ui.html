@@ -479,8 +479,8 @@ body{
           <div class="field-row">
             <span class="f-label">API 密钥<span class="en">API KEY</span></span>
             <input class="holo-input" id="apiKey" type="password" placeholder="可选 · 留空则使用客户端自己发送的 Key" spellcheck="false" autocomplete="off">
-            <button class="ibtn grn" id="saveKeyBtn">保存</button>
             <button class="ibtn violet" id="toggleKey">显示</button>
+            <button class="ibtn grn" id="saveKeyBtn">保存</button>
             <span class="saved-flag" id="savedFlag">已记住 ✓</span>
           </div>
         </div>
@@ -694,7 +694,7 @@ async function refreshStats(){
   // ---- 官网权威优先：/v1/usage（账单金额、总 token、今日、按模型明细）----
   let u = null;
   try { u = await call("Usage"); } catch(e){}
-  const official = !!(u && !u.ok===false
+  const official = !!(u && u.ok !== false
     && !(u.errors && u.errors.length > 0)
     && (u.totalTokens > 0 || u.costUSD > 0 || u.totalRuns > 0));
   if (official){
