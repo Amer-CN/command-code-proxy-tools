@@ -8,8 +8,7 @@ http://127.0.0.1:55990/v1 —— 它实际走的是 CommandCode CLI 的接口
 （Kimi、GLM、MiniMax、DeepSeek、Qwen、StepFun、小米MiMo、Gemini 等 17 个）。
 
 文件清单：
-- CommandCode代理-单文件版.hta   ★ 单文件版：双击即用，自动释放内置代理组件并启动
-- CommandCode控制台.hta          多文件版控制台（依赖 bin 下的 exe）
+- CommandCode代理-单文件版.hta   ★ 唯一界面：双击即用，自动释放内置代理组件并启动
 - 启动代理.bat / 停止代理.bat   命令行启停
 - 设置开机自启.bat / 取消开机自启.bat  开机自动后台运行
 - bin\command-code-proxy.exe    代理本体（预编译，无需安装 Go）

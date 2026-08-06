@@ -215,6 +215,8 @@ function dismissNotice() {
   log("已关闭安全软件提示（下次不再显示）");
 }
 
+function refreshNow() { refresh(); }
+
 function refresh() {
   var running = isRunning();
   var dot = document.getElementById("dot");

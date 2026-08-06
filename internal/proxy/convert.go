@@ -72,7 +72,13 @@ func ConvertMessages(openAIMsgs []api.OpenAIMessage) []api.CCMessage {
 			continue
 		}
 
-		ccMsgs = append(ccMsgs, api.CCMessage{Role: m.Role, Content: parseContent(m.Content, toolNames)})
+		contentParts := parseContent(m.Content, toolNames)
+		if len(contentParts) == 0 {
+			// Skip empty messages: CommandCode rejects null content (e.g. Codex
+			// history items such as reasoning summaries that carry no text).
+			continue
+		}
+		ccMsgs = append(ccMsgs, api.CCMessage{Role: m.Role, Content: contentParts})
 	}
 	return ccMsgs
 }
