@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dev2k6/command-code-proxy-server/internal/api"
@@ -65,6 +66,11 @@ type Proxy struct {
 	Client  *http.Client
 	Debug   bool
 	Stats   *UsageStats
+
+	// /v1/usage 结果缓存（见 usage.go：避免 GUI 轮询同步阻塞拉官网）
+	usageMu   sync.Mutex
+	usageData []byte
+	usageAt   time.Time
 }
 
 // NewProxy creates a new proxy instance
