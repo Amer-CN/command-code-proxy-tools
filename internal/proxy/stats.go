@@ -23,17 +23,21 @@ type UsageStats struct {
 
 // ModelStat tracks token counts for one model.
 type ModelStat struct {
-	Runs         int64 `json:"runs"`
-	InputTokens  int64 `json:"inputTokens"`
-	OutputTokens int64 `json:"outputTokens"`
+	Runs             int64 `json:"runs"`
+	InputTokens      int64 `json:"inputTokens"`
+	OutputTokens     int64 `json:"outputTokens"`
+	CacheReadTokens  int64 `json:"cacheReadTokens"`
+	CacheWriteTokens int64 `json:"cacheWriteTokens"`
 	// Per-day breakdown, keyed by YYYY-MM-DD (local time).
 	Days map[string]*DayStat `json:"days,omitempty"`
 }
 
 // DayStat tracks one calendar day's usage.
 type DayStat struct {
-	InputTokens  int64 `json:"inputTokens"`
-	OutputTokens int64 `json:"outputTokens"`
+	InputTokens      int64 `json:"inputTokens"`
+	OutputTokens     int64 `json:"outputTokens"`
+	CacheReadTokens  int64 `json:"cacheReadTokens"`
+	CacheWriteTokens int64 `json:"cacheWriteTokens"`
 }
 
 func NewUsageStats(file string) *UsageStats {
@@ -48,7 +52,7 @@ func dayKey() string {
 }
 
 // Record adds one completed run's usage for a model.
-func (s *UsageStats) Record(model string, input, output int64) {
+func (s *UsageStats) Record(model string, input, output, cacheRead, cacheWrite int64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	ms := s.Models[model]
@@ -59,6 +63,8 @@ func (s *UsageStats) Record(model string, input, output int64) {
 	ms.Runs++
 	ms.InputTokens += input
 	ms.OutputTokens += output
+	ms.CacheReadTokens += cacheRead
+	ms.CacheWriteTokens += cacheWrite
 	if ms.Days == nil {
 		ms.Days = map[string]*DayStat{}
 	}
@@ -70,11 +76,13 @@ func (s *UsageStats) Record(model string, input, output int64) {
 	}
 	ds.InputTokens += input
 	ds.OutputTokens += output
+	ds.CacheReadTokens += cacheRead
+	ds.CacheWriteTokens += cacheWrite
 	s.save()
 }
 
 // Today returns aggregate usage for today across all models.
-func (s *UsageStats) Today() (in, out int64) {
+func (s *UsageStats) Today() (in, out, cacheRead, cacheWrite int64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	dk := dayKey()
@@ -82,6 +90,8 @@ func (s *UsageStats) Today() (in, out int64) {
 		if ds := ms.Days[dk]; ds != nil {
 			in += ds.InputTokens
 			out += ds.OutputTokens
+			cacheRead += ds.CacheReadTokens
+			cacheWrite += ds.CacheWriteTokens
 		}
 	}
 	return
@@ -119,6 +129,10 @@ func (s *UsageStats) load() {
 	if s.Models == nil {
 		s.Models = map[string]*ModelStat{}
 	}
+	if s.Started == 0 { // 首次运行（或旧数据无 started）：记录统计起点
+		s.Started = time.Now().Unix()
+		s.save()
+	}
 }
 
 // save writes stats to disk atomically.
@@ -145,28 +159,35 @@ func (p *Proxy) HandleStats(w http.ResponseWriter, r *http.Request) {
 	}
 	snap := p.Stats.Snapshot()
 
-	// 覆盖式校准：有校准的模型，其本地总 token 被官网值覆盖（以后新请求继续累加）。
+	// 覆盖式校准：有校准的模型，其本地总 token（含缓存命中）被官网值覆盖（以后新请求继续累加）。
 	calib := p.calibration()
 	calibrated := map[string]bool{}
 	for name, official := range calib {
-		if ms, ok := snap.Models[name]; ok && official > 0 {
-			// 保持本地输入/输出比例，把总和缩放到官网值
-			sum := ms.InputTokens + ms.OutputTokens
-			if sum > 0 {
-				ms.InputTokens = ms.InputTokens * official / sum
-				ms.OutputTokens = official - ms.InputTokens
-			} else {
-				ms.InputTokens = official
-			}
-			calibrated[name] = true
+		ms, ok := snap.Models[name]
+		if !ok || official <= 0 {
+			continue
 		}
+		// 保持本地各分项比例，把总和（输入+输出+缓存读+缓存写）缩放到官网值
+		sum := ms.InputTokens + ms.OutputTokens + ms.CacheReadTokens + ms.CacheWriteTokens
+		if sum > 0 {
+			scale := float64(official) / float64(sum)
+			ms.InputTokens = int64(float64(ms.InputTokens) * scale)
+			ms.OutputTokens = int64(float64(ms.OutputTokens) * scale)
+			ms.CacheReadTokens = int64(float64(ms.CacheReadTokens) * scale)
+			ms.CacheWriteTokens = official - ms.InputTokens - ms.OutputTokens - ms.CacheReadTokens
+		} else {
+			ms.InputTokens = official
+		}
+		calibrated[name] = true
 	}
 
-	todayIn, todayOut := p.Stats.Today()
-	var totalIn, totalOut int64
+	todayIn, todayOut, todayCacheRead, todayCacheWrite := p.Stats.Today()
+	var totalIn, totalOut, totalCacheRead, totalCacheWrite int64
 	for _, ms := range snap.Models {
 		totalIn += ms.InputTokens
 		totalOut += ms.OutputTokens
+		totalCacheRead += ms.CacheReadTokens
+		totalCacheWrite += ms.CacheWriteTokens
 	}
 
 	// 金额估算（官方定价 per 1M tokens，USD；无价格的模型按 0 计）
@@ -176,9 +197,17 @@ func (p *Proxy) HandleStats(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"started":   snap.Started,
 		"models":    snap.Models,
-		"total":     map[string]int64{"input": totalIn, "output": totalOut, "total": totalIn + totalOut},
-		"today":     map[string]int64{"input": todayIn, "output": todayOut, "total": todayIn + todayOut},
-		"statsFile": filepath.Base(p.Stats.file),
+		"total": map[string]int64{
+			"input": totalIn, "output": totalOut,
+			"cacheRead": totalCacheRead, "cacheWrite": totalCacheWrite,
+			"total": totalIn + totalOut + totalCacheRead + totalCacheWrite,
+		},
+		"today": map[string]int64{
+			"input": todayIn, "output": todayOut,
+			"cacheRead": todayCacheRead, "cacheWrite": todayCacheWrite,
+			"total": todayIn + todayOut + todayCacheRead + todayCacheWrite,
+		},
+		"statsFile":  filepath.Base(p.Stats.file),
 		"cost":       cost, // 估算金额（按官方单价 × 本地 token）
 		"calibrated": calibrated, // 哪些模型被官网校准覆盖
 	})
@@ -225,7 +254,14 @@ var pricing = map[string][2]float64{ // [输入, 输出] per 1M tokens
 	"google/gemini-3.1-flash-lite": {0.0, 0.0},
 }
 
-// estimateCost 按模型价格表估算总金额（USD）。
+// cacheReadPrices 各模型缓存命中读取每百万 token 的价格（USD）。
+// 来源：官方定价页。未列出的模型按输入价的 2% 估算（deepseek-v4-flash 实际为 $0.0028/1M）。
+var cacheReadPrices = map[string]float64{
+	"deepseek-v4-flash": 0.0028,
+}
+
+// estimateCost 按模型价格表估算总金额（USD），缓存命中按缓存读取价计算。
+// 缓存写入不单独计费（已含在输入价内）。
 func estimateCost(models map[string]*ModelStat) float64 {
 	var total float64
 	for name, ms := range models {
@@ -233,7 +269,17 @@ func estimateCost(models map[string]*ModelStat) float64 {
 		if pr[0] == 0 && pr[1] == 0 {
 			pr = pricing[shortName(name)]
 		}
-		total += float64(ms.InputTokens)/1e6*pr[0] + float64(ms.OutputTokens)/1e6*pr[1]
+		inPrice, outPrice := pr[0], pr[1]
+		cr := cacheReadPrices[name]
+		if cr == 0 {
+			cr = cacheReadPrices[shortName(name)]
+		}
+		if cr == 0 {
+			cr = inPrice * 0.02 // 默认按输入价 2% 估算缓存读取
+		}
+		total += float64(ms.InputTokens)/1e6*inPrice +
+			float64(ms.OutputTokens)/1e6*outPrice +
+			float64(ms.CacheReadTokens)/1e6*cr
 	}
 	return total
 }

@@ -303,7 +303,7 @@ func (p *Proxy) StreamResponse(w http.ResponseWriter, r *http.Request, ccResp *h
 	sentRole := false
 	toolCallIndex := 0
 	toolCallIndexes := map[string]int{}
-	var streamIn, streamOut int64 // 累计本次流的 token 用量（finish 事件报告）
+	var streamIn, streamOut, streamCacheRead, streamCacheWrite int64 // 累计本次流的 token 用量（finish 事件报告）
 
 	lineErr := forEachLine(ccResp.Body, r.Context(), func(line string) error {
 		p.debugf("[DEBUG] CommandCode stream line: %s", truncateLog(line))
@@ -458,8 +458,10 @@ func (p *Proxy) StreamResponse(w http.ResponseWriter, r *http.Request, ccResp *h
 			if event.TotalUsage != nil {
 				streamIn = int64(event.TotalUsage.InputTokens)
 				streamOut = int64(event.TotalUsage.OutputTokens)
-				if streamIn > 0 || streamOut > 0 {
-					p.Stats.Record(model, streamIn, streamOut)
+				streamCacheRead = int64(event.TotalUsage.CacheReadTokens)
+				streamCacheWrite = int64(event.TotalUsage.CacheWriteTokens)
+				if streamIn > 0 || streamOut > 0 || streamCacheRead > 0 {
+					p.Stats.Record(model, streamIn, streamOut, streamCacheRead, streamCacheWrite)
 				}
 			}
 
@@ -483,7 +485,7 @@ func (p *Proxy) WriteSSE(w io.Writer, flusher http.Flusher, resp api.OpenAIChatR
 // NonStreamResponse handles non-streaming response
 func (p *Proxy) NonStreamResponse(w http.ResponseWriter, ccResp *http.Response, requestID, model string, created int64) {
 	var content strings.Builder
-	var inputTokens, outputTokens int
+	var inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens int
 	var hasToolCalls bool
 	var toolCalls []api.ToolCall
 	toolCallByID := map[string]int{}
@@ -562,6 +564,8 @@ func (p *Proxy) NonStreamResponse(w http.ResponseWriter, ccResp *http.Response, 
 			if event.TotalUsage != nil {
 				inputTokens = event.TotalUsage.InputTokens
 				outputTokens = event.TotalUsage.OutputTokens
+				cacheReadTokens = event.TotalUsage.CacheReadTokens
+				cacheWriteTokens = event.TotalUsage.CacheWriteTokens
 			}
 		case "error":
 			log.Printf("[ERROR] Stream error: %v", event.Error)
@@ -601,8 +605,8 @@ func (p *Proxy) NonStreamResponse(w http.ResponseWriter, ccResp *http.Response, 
 	}
 
 	// Record local usage stats (counts tokens CommandCode actually reported).
-	if inputTokens > 0 || outputTokens > 0 {
-		p.Stats.Record(model, int64(inputTokens), int64(outputTokens))
+	if inputTokens > 0 || outputTokens > 0 || cacheReadTokens > 0 {
+		p.Stats.Record(model, int64(inputTokens), int64(outputTokens), int64(cacheReadTokens), int64(cacheWriteTokens))
 	}
 
 	w.Header().Set("Content-Type", "application/json")

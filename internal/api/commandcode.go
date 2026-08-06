@@ -70,7 +70,11 @@ type CCStreamEvent struct {
 		StatusCode *int   `json:"statusCode"`
 	} `json:"error"`
 	TotalUsage *struct {
-		InputTokens  int `json:"inputTokens"`
-		OutputTokens int `json:"outputTokens"`
+		InputTokens      int `json:"inputTokens"`
+		OutputTokens     int `json:"outputTokens"`
+		CacheReadTokens  int `json:"cacheReadTokens"`
+		CacheWriteTokens int `json:"cacheWriteTokens"`
+		CacheReadCost    *float64 `json:"cacheReadCost"`
+		CacheWriteCost   *float64 `json:"cacheWriteCost"`
 	} `json:"totalUsage"`
 }

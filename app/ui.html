@@ -242,7 +242,7 @@ body{
 .bars-head{display:flex;align-items:center;margin:14px 0 8px}
 .bars-head .t{font-size:10px;color:var(--dim);letter-spacing:2px}
 .bars-wrap{flex:1;overflow-y:auto;min-height:0;padding-right:4px}
-.bar-row{display:grid;grid-template-columns:150px 1fr 86px;gap:10px;align-items:center;margin-bottom:7px;
+.bar-row{display:grid;grid-template-columns:150px 1fr 120px;gap:10px;align-items:center;margin-bottom:7px;
   animation:barin .5s var(--ease) both}
 @keyframes barin{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:none}}
 .bar-row .name{font-family:var(--mono);font-size:10.5px;color:#a9c3e8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -254,6 +254,7 @@ body{
   background-size:200% 100%;animation:shimmer 2.2s linear infinite}
 @keyframes shimmer{from{background-position:180% 0}to{background-position:-80% 0}}
 .bar-row .val{font-family:var(--mono);font-size:10px;color:var(--dim);text-align:right}
+.bar-row .sub2{display:block;font-size:8px;color:var(--dim);opacity:.7;margin-top:1px;white-space:nowrap}
 .bars-empty{color:var(--dim2);font-size:11px;letter-spacing:1px;padding:14px 4px;font-family:var(--mono)}
 .tel-actions{display:flex;gap:10px;margin-top:12px}
 
@@ -690,20 +691,25 @@ async function refreshStats(){
   const wrap = $("barsWrap");
   if (!d || !d.ok && !d.total){ wrap.innerHTML = '<div class="bars-empty">// 代理未运行 · 点火后自动统计</div>'; return; }
   const total = d.total||{}, today = d.today||{}, models = d.models||{};
-  countUp($("statTotal"), total.total||0);  $("statTotalSub").textContent = `↑${fmt(total.input)} / ↓${fmt(total.output)}`;
-  countUp($("statToday"), today.total||0);  $("statTodaySub").textContent = `↑${fmt(today.input)} / ↓${fmt(today.output)}`;
+  const crT = total.cacheRead||0, crD = today.cacheRead||0;
+  countUp($("statTotal"), total.total||0);
+  $("statTotalSub").textContent = `↑${fmt(total.input)} / ↓${fmt(total.output)}` + (crT?` / ⚡缓存${fmt(crT)}`:"");
+  countUp($("statToday"), today.total||0);
+  $("statTodaySub").textContent = `↑${fmt(today.input)} / ↓${fmt(today.output)}` + (crD?` / ⚡缓存${fmt(crD)}`:"");
   const names = Object.keys(models);
   const runs = names.reduce((s,k)=>s+(models[k].runs||0),0);
   countUp($("statRuns"), runs); $("statModels").textContent = names.length + " 个模型";
-  // 金额估算（官方单价 × 本地 token）
+  // 金额估算（官方单价 × 本地 token；缓存命中按缓存读价 $0.0028/1M 计，约省 98%）
   const cost = d.cost || 0;
   $("statCost").textContent = "$" + cost.toFixed(4);
   // 校准：覆盖式——有校准的模型已被官网值覆盖（后端已处理），这里只显示标记
   const calibrated = d.calibrated || {};
   const calibNames = Object.keys(calibrated).filter(k=>calibrated[k]);
-  $("statCostSub").textContent = calibNames.length ? "已用官网校准 " + calibNames.length + " 个模型" : "按官方单价估算";
+  const cacheTotal = crT + (total.cacheWrite||0);
+  const subTxt = calibNames.length ? "已用官网校准 " + calibNames.length + " 个模型" : "按官方单价估算";
+  $("statCostSub").textContent = cacheTotal>0 ? subTxt + ` · 缓存命中 ${(cacheTotal/(total.total||1)*100).toFixed(0)}%` : subTxt;
   if (!names.length){ wrap.innerHTML = '<div class="bars-empty">// 暂无数据 · 跑几轮对话后点刷新</div>'; return; }
-  const sorted = names.map(k=>({name:k, ...models[k], sum:(models[k].inputTokens||0)+(models[k].outputTokens||0)}))
+  const sorted = names.map(k=>({name:k, ...models[k], sum:(models[k].inputTokens||0)+(models[k].outputTokens||0)+(models[k].cacheReadTokens||0)}))
                       .sort((a,b)=>b.sum-a.sum).slice(0,9);
   const max = sorted[0].sum || 1;
   wrap.innerHTML = "";
@@ -714,9 +720,10 @@ async function refreshStats(){
     const c = vendorColor(m.name);
     const isCal = calibrated[m.name];
     const diffTxt = isCal ? ` <span style="color:#7dffb0">✓已校准</span>` : "";
+    const crPct = m.cacheReadTokens ? ` · ⚡缓存${fmt(m.cacheReadTokens)}` : "";
     row.innerHTML = `<span class="name"></span>
       <div class="bar-track"><div class="bar-fill" style="background:linear-gradient(90deg,${c},${c}88);box-shadow:0 0 10px ${c}55"></div></div>
-      <span class="val">${fmt(m.sum)}${diffTxt}</span>`;
+      <span class="val">${fmt(m.sum)}${diffTxt}<em class="sub2">↑${fmt(m.inputTokens)} / ↓${fmt(m.outputTokens)}${crPct}</em></span>`;
     row.querySelector(".name").textContent = m.name;
     row.onclick = ()=>calibModel(m.name);
     wrap.appendChild(row);
