@@ -9,85 +9,123 @@
   scroll="auto" border="thick" caption="yes" showintaskbar="yes"
   maximizebutton="yes" minimizebutton="yes" />
 <style>
-  body { margin:0; padding:18px 22px; font-family:"Microsoft YaHei","Segoe UI",sans-serif; font-size:14px;
+  body { margin:0; padding:0; font-family:"Microsoft YaHei","Segoe UI",sans-serif; font-size:14px;
          background:#0f1420; color:#dde3ee; }
-  h1 { font-size:18px; margin:0 0 12px 0; color:#fff; }
-  #statusbar { background:#161d2e; border:1px solid #24304a; border-radius:8px;
-               padding:10px 14px; margin-bottom:14px; }
-  .dot { display:inline-block; width:11px; height:11px; border-radius:50%; margin-right:8px; vertical-align:middle; }
-  .dot.green { background:#22c55e; box-shadow:0 0 6px #22c55e; }
+  .content { padding:14px 20px 18px 20px; }
+  /* ---- 头部 ---- */
+  .header { background:linear-gradient(135deg,#1d6df0 0%,#1446a8 100%); padding:14px 20px; }
+  .header h1 { margin:0; font-size:17px; color:#fff; font-weight:bold; letter-spacing:0.5px; }
+  .header .sub { margin-top:4px; font-size:12px; color:#b8d0f5; }
+  .header .ver { float:right; margin-top:-30px; background:rgba(255,255,255,0.18);
+                 border:1px solid rgba(255,255,255,0.35); color:#fff; font-size:11px;
+                 padding:3px 10px; border-radius:12px; }
+  /* ---- 状态条 ---- */
+  .statusbar { background:#161d2e; border:1px solid #24304a; border-radius:8px;
+               padding:12px 14px; margin:12px 0; }
+  .dot { display:inline-block; width:12px; height:12px; border-radius:50%; margin-right:9px; vertical-align:middle; }
+  .dot.green { background:#22c55e; box-shadow:0 0 8px #22c55e; }
   .dot.gray  { background:#64748b; }
-  .dot.red   { background:#ef4444; box-shadow:0 0 6px #ef4444; }
+  .dot.red   { background:#ef4444; box-shadow:0 0 8px #ef4444; }
+  #statusText { font-size:14px; font-weight:bold; }
+  /* ---- 分区标题 ---- */
+  .sec { color:#8fa3c8; font-size:12px; margin:16px 0 8px 0; padding-left:8px;
+         border-left:3px solid #1d6df0; }
+  /* ---- 输入行 ---- */
   .row { margin-bottom:10px; }
-  .label { display:inline-block; width:125px; color:#8fa3c8; vertical-align:middle; }
+  .label { display:inline-block; width:125px; color:#8fa3c8; vertical-align:middle; font-size:13px; }
   input[type=text], input[type=password] { display:inline-block; width:58%; background:#161d2e; color:#e2e8f0;
          border:1px solid #2a3a5c; border-radius:6px; padding:8px 10px; vertical-align:middle; }
+  input[type=text]:focus, input[type=password]:focus { border-color:#1d6df0; }
+  /* ---- 按钮 ---- */
   button { background:#24304a; color:#e2e8f0; border:1px solid #33456e; border-radius:6px;
            padding:8px 14px; cursor:pointer; }
   button:hover { background:#2e3d61; }
-  button.primary { background:#1d6df0; border-color:#1d6df0; font-weight:bold; }
+  button.primary { background:linear-gradient(180deg,#2c7cf5,#1d6df0); border-color:#1d6df0; font-weight:bold; }
   button.primary:hover { background:#2c7cf5; }
-  button.danger { background:#7c2626; border-color:#a33; }
+  button.danger { background:linear-gradient(180deg,#943030,#7c2626); border-color:#a33; }
   button.danger:hover { background:#943030; }
   button.small { padding:6px 10px; font-size:12px; }
   .btns { margin:14px 0; }
   .btns button { margin:0 10px 8px 0; }
-  .section-title { color:#8fa3c8; margin:16px 0 8px 0; font-size:13px; }
+  /* ---- 模型 ---- */
   #modelList { padding-bottom:6px; }
   .chip { display:inline-block; background:#161d2e; border:1px solid #2a3a5c; border-radius:14px;
           padding:5px 12px; margin:3px 5px; font-size:12px; cursor:pointer; color:#a8c0e8; }
   .chip:hover { background:#24304a; border-color:#3d5a99; }
+  /* ---- 日志 ---- */
   #log { background:#0a0e18; border:1px solid #1d2740; border-radius:8px; padding:10px;
          font-family:Consolas,monospace; font-size:12px; color:#7f93b8; height:100px;
-         overflow-y:auto; margin-top:14px; }
+         overflow-y:auto; margin-top:6px; }
+  /* ---- 杀软提示横幅（首次运行） ---- */
+  #avNotice { display:none; background:#2a2415; border:1px solid #8a6d1f; border-radius:8px;
+              padding:10px 14px; margin-bottom:12px; font-size:12px; color:#e8c56a; line-height:1.7; }
+  #avNotice button { margin-left:10px; padding:4px 12px; font-size:12px; vertical-align:middle; }
+  /* ---- 帮助 ---- */
   #help { display:none; background:#161d2e; border:1px solid #24304a; border-radius:8px;
           padding:12px 16px; margin-top:12px; font-size:12px; color:#a8c0e8; line-height:1.9; }
+  /* ---- 底部说明 ---- */
   .tip { margin-top:12px; font-size:12px; color:#5f7298; line-height:1.8; }
 </style>
 </head>
 <body>
-<h1>CommandCode 代理控制台（单文件版）</h1>
-<div id="statusbar">
-  <span id="dot" class="dot gray"></span>
-  <span id="statusText">正在检测…</span>
+<div class="header">
+  <span class="ver">v1.0.8</span>
+  <h1>&#9889; CommandCode 代理控制台（单文件版）</h1>
+  <div class="sub">本地 OpenAI 兼容代理 · 普通套餐即可使用</div>
 </div>
+<div class="content">
 
-<div class="row">
-  <span class="label">Base URL</span>
-  <input type="text" id="baseUrl" readonly value="http://127.0.0.1:55990/v1">
-  <button onclick="copyText('baseUrl')">复制</button>
+  <div class="statusbar">
+    <span id="dot" class="dot gray"></span>
+    <span id="statusText">正在检测…</span>
+  </div>
+
+  <div id="avNotice">
+    &#9888; 安全软件提示：本工具内含自解压组件与开机自启脚本，火绒 / 360 等安全软件可能误报拦截
+    （无毒无害，代码完全开源）。若文件被清理，请将本工具所在文件夹加入杀软「信任区」。
+    <button onclick="dismissNotice()">知道了</button>
+  </div>
+
+  <div class="sec">服务配置</div>
+  <div class="row">
+    <span class="label">Base URL</span>
+    <input type="text" id="baseUrl" readonly value="http://127.0.0.1:55990/v1">
+    <button onclick="copyText('baseUrl')">复制</button>
+  </div>
+  <div class="row">
+    <span class="label">API Key（可选）</span>
+    <input type="password" id="apiKey" placeholder="不填则使用客户端自己发送的 Key">
+    <button onclick="toggleKey()">显示</button>
+  </div>
+
+  <div class="sec">操作</div>
+  <div class="btns">
+    <button class="primary" onclick="startProxy()">&#9654; 启动代理</button>
+    <button class="danger" onclick="stopProxy()">&#9632; 停止代理</button>
+    <button onclick="refreshNow()">&#8635; 刷新状态</button>
+    <button class="small" onclick="setAutostart()">&#9881; 设置开机自启</button>
+    <button class="small" onclick="unsetAutostart()">取消开机自启</button>
+    <button class="small" onclick="toggleHelp()">&#63; 使用帮助</button>
+  </div>
+
+  <div class="sec">可用模型 <span id="modelCount" style="color:#5f7298"></span></div>
+  <div id="modelList">代理未运行时无法获取</div>
+
+  <div class="sec">运行日志</div>
+  <div id="log"></div>
+
+  <div id="help">
+    1. 双击本文件 → 自动解压内置组件并启动代理（首次解压约 10~60 秒，请耐心等待，状态变绿即成功）。<br>
+    2. 在任意 Agent / 客户端里：Base URL 填 http://127.0.0.1:55990/v1 ，API Key 填你自己 CommandCode Studio 生成的 Key。<br>
+    3. 不想每次填 Key，就在上方输入一次，点「启动代理」后会记住（保存在本目录 api-key.txt）。<br>
+    4. 不用了点「停止代理」；想开机自动后台运行，点「设置开机自启」。<br>
+    5. 内置 17 个模型（DeepSeek / Kimi / GLM / Qwen / Gemini / MiniMax / 小米 MiMo 等），切换只需改模型名。<br>
+    6. 注意：本工具只是转换接口，需要你自己有 CommandCode 套餐；仅支持 Windows；文件夹路径建议不要包含空格。<br>
+    7. 若杀毒软件询问，选择允许；若组件损坏，删除本目录下的 bin 文件夹后重新打开本文件即可。
+  </div>
+
+  <div class="tip">版本 v1.0.8 · 内置代理组件 · 组件首次运行时自动释放到本目录 bin\ 文件夹</div>
 </div>
-<div class="row">
-  <span class="label">API Key（可选）</span>
-  <input type="password" id="apiKey" placeholder="不填则使用客户端自己发送的 Key">
-  <button onclick="toggleKey()">显示</button>
-</div>
-
-<div class="btns">
-  <button class="primary" onclick="startProxy()">&#9654; 启动代理</button>
-  <button class="danger" onclick="stopProxy()">&#9632; 停止代理</button>
-  <button onclick="refreshNow()">&#8635; 刷新状态</button>
-  <button class="small" onclick="setAutostart()">&#9881; 设置开机自启</button>
-  <button class="small" onclick="unsetAutostart()">取消开机自启</button>
-  <button class="small" onclick="toggleHelp()">&#63; 使用帮助</button>
-</div>
-
-<div class="section-title">可用模型（点击复制模型名）— 全部走你 CommandCode 套餐</div>
-<div id="modelList">代理未运行时无法获取</div>
-
-<div id="log"></div>
-
-<div id="help">
-  1. 双击本文件 → 自动解压内置组件并启动代理（首次解压约 10~60 秒，请耐心等待，状态变绿即成功）。<br>
-  2. 在任意 Agent / 客户端里：Base URL 填 http://127.0.0.1:55990/v1 ，API Key 填你自己 CommandCode Studio 生成的 Key。<br>
-  3. 不想每次填 Key，就在上方输入一次，点「启动代理」后会记住（保存在本目录 api-key.txt）。<br>
-  4. 不用了点「停止代理」；想开机自动后台运行，点「设置开机自启」。<br>
-  5. 内置 17 个模型（DeepSeek / Kimi / GLM / Qwen / Gemini / MiniMax / 小米 MiMo 等），切换只需改模型名。<br>
-  6. 注意：本工具只是转换接口，需要你自己有 CommandCode 套餐；仅支持 Windows；文件夹路径建议不要包含空格。<br>
-  7. 若杀毒软件询问，选择允许；若组件损坏，删除本目录下的 bin 文件夹后重新打开本文件即可。
-</div>
-
-<div class="tip">版本 v1.0.8 · 内置代理组件 · 组件首次运行时自动释放到本目录 bin\ 文件夹</div>
 
 <script language="JScript">
 var shell = new ActiveXObject("WScript.Shell");
@@ -99,6 +137,7 @@ var here = fso.GetParentFolderName(loc);
 var binDir = here + "\\bin";
 var exePath = binDir + "\\command-code-proxy.exe";
 var keyFile = here + "\\api-key.txt";
+var noticeFile = here + "\\notice_dismissed.flag";
 
 var HEALTH = "http://127.0.0.1:55990/health";
 var MODELS = "http://127.0.0.1:55990/v1/models";
@@ -142,6 +181,15 @@ function toggleHelp() {
   h.style.display = (h.style.display == "block") ? "none" : "block";
 }
 
+function dismissNotice() {
+  try {
+    var f = fso.CreateTextFile(noticeFile, true);
+    f.Close();
+  } catch (e) {}
+  document.getElementById("avNotice").style.display = "none";
+  log("已关闭安全软件提示（下次不再显示）");
+}
+
 function refresh() {
   var running = isRunning();
   var dot = document.getElementById("dot");
@@ -154,6 +202,7 @@ function refresh() {
     dot.className = "dot gray";
     st.innerHTML = "未运行 · 点击「启动代理」";
     document.getElementById("modelList").innerHTML = "代理未运行时无法获取";
+    document.getElementById("modelCount").innerHTML = "";
   }
 }
 
@@ -166,6 +215,7 @@ function loadModels() {
     html += '<span class="chip" onclick="copyModel(\'' + list[i].id + '\')">' + list[i].id + "</span>";
   }
   document.getElementById("modelList").innerHTML = html;
+  document.getElementById("modelCount").innerHTML = "（" + list.length + " 个）";
 }
 
 // ---- 内置组件释放 ----
@@ -267,6 +317,11 @@ function unsetAutostart() {
       var f = fso.OpenTextFile(keyFile, 1);
       document.getElementById("apiKey").value = f.ReadAll();
       f.Close();
+    }
+  } catch (e) {}
+  try {
+    if (!fso.FileExists(noticeFile)) {
+      document.getElementById("avNotice").style.display = "block";
     }
   } catch (e) {}
   if (exeExists()) {
