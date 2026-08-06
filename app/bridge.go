@@ -260,6 +260,26 @@ func setAutostart(on bool, port string) (string, error) {
 
 var httpClient = &http.Client{Timeout: 1500 * time.Millisecond}
 
+// httpClientSlow 给官网统计接口用：/v1/usage 要串行调 4 个上游接口，
+// 1.5s 的默认超时不够（实测 ~3s），单独用 10s 超时。
+var httpClientSlow = &http.Client{Timeout: 10 * time.Second}
+
+func httpGetSlow(url string) (string, bool) {
+	resp, err := httpClientSlow.Get(url)
+	if err != nil {
+		return "", false
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", false
+	}
+	b, err := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
+	if err != nil {
+		return "", false
+	}
+	return string(b), true
+}
+
 func httpGet(url string) (string, bool) {
 	resp, err := httpClient.Get(url)
 	if err != nil {
@@ -364,8 +384,9 @@ func (a *app) bindAll(w webview.WebView) {
 		return `{"ok":false,"msg":"代理未运行或无法连接"}`
 	})
 	// 官网权威统计（/v1/usage）：金额、总 token、运行次数、额度、按模型明细。
+	// 上游 4 个接口耗时较长，用独立慢速客户端（10s 超时）。
 	_ = w.Bind("ccUsage", func() string {
-		if s, ok := httpGet(a.baseURL() + "/v1/usage"); ok {
+		if s, ok := httpGetSlow(a.baseURL() + "/v1/usage"); ok {
 			return s
 		}
 		return `{"ok":false,"msg":"代理未运行或无法连接"}`

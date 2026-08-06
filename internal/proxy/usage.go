@@ -87,7 +87,7 @@ func (p *Proxy) HandleUsage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var sum usageSummary
-	// 1. whoami -> org id（个人账号 org 为 null，此时所有 /alpha/ 接口无参直调）
+	// 1. whoami -> org id（个人账号 org 为 null，其余 /alpha/ 接口无参直调）
 	whoamiRaw, _, err := get("/alpha/whoami", nil)
 	if err != nil {
 		sum.Errors = append(sum.Errors, err.Error())
@@ -111,6 +111,7 @@ func (p *Proxy) HandleUsage(w http.ResponseWriter, r *http.Request) {
 		orgID = whoami.Org.ID
 	}
 
+	// 2-4. credits / subscription / summary 互相独立，并行拉取。
 	// params：有 org 的组织账号传 orgId，个人账号不传（直调）。
 	params := func() map[string]string {
 		if orgID != "" {
@@ -118,22 +119,32 @@ func (p *Proxy) HandleUsage(w http.ResponseWriter, r *http.Request) {
 		}
 		return nil
 	}
-
-	// 2. credits
-	creditsRaw, _, err := get("/alpha/billing/credits", params())
-	if err == nil {
-		sum.Credits = creditsRaw
+	type upRes struct {
+		tag string
+		raw []byte
+		err error
 	}
-	// 3. subscription
-	subRaw, _, err := get("/alpha/billing/subscriptions", params())
-	if err == nil {
-		sum.Sub = subRaw
+	ch := make(chan upRes, 3)
+	fetch := func(tag, endpoint string) {
+		raw, _, err := get(endpoint, params())
+		ch <- upRes{tag, raw, err}
 	}
-
-	// 4. usage summary（个人账号无参直调返回本账单周期汇总）
-	summaryRaw, _, err := get("/alpha/usage/summary", params())
-	if err == nil {
-		sum.Summary = summaryRaw
+	go fetch("credits", "/alpha/billing/credits")
+	go fetch("sub", "/alpha/billing/subscriptions")
+	go fetch("summary", "/alpha/usage/summary")
+	for i := 0; i < 3; i++ {
+		r := <-ch
+		if r.err != nil {
+			continue
+		}
+		switch r.tag {
+		case "credits":
+			sum.Credits = r.raw
+		case "sub":
+			sum.Sub = r.raw
+		default:
+			sum.Summary = r.raw
+		}
 	}
 	// 计划信息（planId / 周期结束）
 	var sub struct {

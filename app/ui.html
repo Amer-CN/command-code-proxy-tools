@@ -219,6 +219,8 @@ body{
 .ibtn:hover::after{left:130%}
 .ibtn.violet{color:#c9b3ff;background:rgba(124,77,255,.08);border-color:rgba(124,77,255,.35)}
 .ibtn.violet:hover{background:rgba(124,77,255,.18);box-shadow:0 0 14px rgba(124,77,255,.2)}
+.ibtn.grn{color:#9dffd0;background:rgba(0,255,170,.07);border-color:rgba(0,255,170,.3)}
+.ibtn.grn:hover{background:rgba(0,255,170,.16);box-shadow:0 0 14px rgba(0,255,170,.2)}
 .ibtn.on{color:#8affd8;background:rgba(0,255,163,.09);border-color:rgba(0,255,163,.4)}
 .saved-flag{font-size:10px;color:var(--green);letter-spacing:1px;opacity:0;transition:opacity .3s;flex:none;width:52px;text-align:right}
 .saved-flag.show{opacity:1}
@@ -477,6 +479,7 @@ body{
           <div class="field-row">
             <span class="f-label">API 密钥<span class="en">API KEY</span></span>
             <input class="holo-input" id="apiKey" type="password" placeholder="可选 · 留空则使用客户端自己发送的 Key" spellcheck="false" autocomplete="off">
+            <button class="ibtn grn" id="saveKeyBtn">保存</button>
             <button class="ibtn violet" id="toggleKey">显示</button>
             <span class="saved-flag" id="savedFlag">已记住 ✓</span>
           </div>
@@ -864,6 +867,13 @@ $("baseUrl").onclick = ()=>copyText($("baseUrl").value, "Base URL");
 $("endpoint").onclick = ()=>copyText($("endpoint").textContent, "Base URL");
 $("toggleKey").onclick = ()=>{ const k=$("apiKey"); const show=k.type==="password"; k.type=show?"text":"password"; $("toggleKey").textContent=show?"隐藏":"显示"; };
 $("apiKey").addEventListener("input", e=>{ e.target.dataset.touched = "1"; });
+// 显式保存按钮
+$("saveKeyBtn").onclick = async ()=>{
+  const key = $("apiKey").value.trim();
+  const r = await call("SaveKey", key);
+  if (r && r.ok){ const f=$("savedFlag"); f.textContent = "已保存 ✓"; f.classList.add("show"); setTimeout(()=>f.classList.remove("show"), 2000); log("ok", r.msg || "Key 已保存"); }
+  else { log("err", "保存 Key 失败: " + ((r&&r.msg)||"未知错误")); }
+};
 // 输入后失焦即保存（无需等点火）
 $("apiKey").addEventListener("change", async e=>{
   const key = e.target.value.trim();
