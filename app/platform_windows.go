@@ -57,6 +57,26 @@ func initialWindowSize() (int, int) {
 	return w, h
 }
 
+// setWindowIcon 把 exe 自带的图标设置到窗口（标题栏 + 任务栏）。
+// webview 底层注册窗口类时用的是系统默认图标（IDI_APPLICATION），
+// 会盖掉 exe 资源里的图标，必须用 WM_SETICON 显式覆盖。
+func setWindowIcon(hwnd uintptr) {
+	defer func() { _ = recover() }()
+	user32 := syscall.NewLazyDLL("user32.dll")
+	kernel32 := syscall.NewLazyDLL("kernel32.dll")
+	hInst, _, _ := kernel32.NewProc("GetModuleHandleW").Call(0)
+	// rsrc 生成的图标资源 ID = 1（MAKEINTRESOURCE(1)）
+	hIcon, _, _ := user32.NewProc("LoadIconW").Call(hInst, 1)
+	if hIcon == 0 {
+		return
+	}
+	const WM_SETICON = 0x0080
+	const ICON_BIG = 1
+	const ICON_SMALL = 0
+	user32.NewProc("SendMessageW").Call(hwnd, WM_SETICON, ICON_BIG, hIcon)
+	user32.NewProc("SendMessageW").Call(hwnd, WM_SETICON, ICON_SMALL, hIcon)
+}
+
 // enableDarkTitleBar 把原生标题栏切换为深色沉浸式（Win10 1809+ / Win11）。
 func enableDarkTitleBar(hwnd uintptr) {
 	defer func() { _ = recover() }()

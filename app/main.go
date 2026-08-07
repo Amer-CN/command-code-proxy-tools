@@ -28,7 +28,7 @@ import (
 )
 
 const (
-	appVersion  = "v2.1.0"
+	appVersion  = "v2.2.0"
 	coreVersion = "v1.0.9"
 	appTitle    = "CommandCode 代理控制台"
 )
@@ -134,13 +134,15 @@ func main() {
 	// 注意：代理以独立 headless 子进程常驻，关窗不停止代理。
 	// 需要停代理时，在界面里点能量核心停堆即可。
 
-	// 深色标题栏（Win10 1809+，尽力而为，失败无碍）
+	// 深色标题栏（Win10 1809+，尽力而为，失败无碍）+ 窗口图标（标题栏/任务栏）
 	if hwnd := w.Window(); hwnd != nil {
 		enableDarkTitleBar(uintptr(hwnd))
+		setWindowIcon(uintptr(hwnd))
 	}
 	w.Dispatch(func() {
 		if hwnd := w.Window(); hwnd != nil {
 			enableDarkTitleBar(uintptr(hwnd))
+			setWindowIcon(uintptr(hwnd))
 		}
 	})
 	w.SetSize(1080, 680, webview.HintMin) // 最小尺寸，防止布局被压坏
