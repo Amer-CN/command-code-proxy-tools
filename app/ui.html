@@ -171,7 +171,7 @@ body{
 .reactor.ext{ --rc:#7c4dff; --rc-glow:rgba(124,77,255,.35)}
 .reactor.ext .core svg{stroke:#b9a5ff}
 /* 状态文案 */
-.status-big{font-size:23px;font-weight:700;letter-spacing:5px;margin-top:0;transition:color .4s;
+.status-big{font-size:23px;font-weight:700;letter-spacing:5px;margin-top:6px;transition:color .4s;
   text-shadow:0 0 18px rgba(0,229,255,.0)}
 .status-big.glow-run{color:#8affd8;text-shadow:0 0 22px rgba(0,255,163,.5)}
 .status-big.glow-st{color:#ffd77a;text-shadow:0 0 22px rgba(255,179,0,.45)}
@@ -183,11 +183,11 @@ body{
   transition:all .25s;letter-spacing:.5px}
 .endpoint:hover{background:rgba(0,229,255,.14);box-shadow:0 0 16px rgba(0,229,255,.18);transform:translateY(-1px)}
 .endpoint:active{transform:translateY(1px) scale(.98)}
-.meta-row{display:flex;gap:22px;margin-top:8px}
+.meta-row{display:flex;gap:22px;margin-top:12px}
 .meta{text-align:center}
 .meta .v{font-family:var(--mono);font-size:14px;color:#bfefff}
 .meta .k{font-size:12px;color:var(--dim);letter-spacing:2px;margin-top:2px}
-.eq{display:flex;align-items:flex-end;gap:3px;height:20px;margin-top:6px}
+.eq{display:flex;align-items:flex-end;gap:3px;height:26px;margin-top:14px}
 .eq i{width:4px;height:4px;background:linear-gradient(180deg,var(--cyan),var(--violet));border-radius:1px;
   animation:eqb 1s ease-in-out infinite;animation-play-state:paused;opacity:.25;transition:opacity .5s}
 .reactor-zone.running .eq i{opacity:.9;animation-play-state:running}
@@ -245,6 +245,156 @@ body{
 .stat-card.vio::before{background:linear-gradient(180deg,var(--violet),transparent)}
 .stat-card.grn::before{background:linear-gradient(180deg,var(--green),transparent)}
 /* 模型消耗条 */
+.bars-wrap{flex:1;overflow-y:auto;min-height:0;padding-right:4px}
+.bar-row{display:grid;grid-template-columns:150px 1fr 150px;gap:10px;align-items:center;margin-bottom:7px;
+  animation:barin .5s var(--ease) both}
+@keyframes barin{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:none}}
+.bar-row .name{font-family:var(--mono);font-size:10.5px;color:#a9c3e8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-track{height:8px;background:rgba(255,255,255,.04);border-radius:4px;overflow:hidden;position:relative}
+.bar-fill{height:100%;border-radius:4px;width:0;position:relative;transition:width .9s var(--ease);
+  background:linear-gradient(90deg,var(--cyan),var(--violet));box-shadow:0 0 10px rgba(0,229,255,.35)}
+.bar-fill::after{content:"";position:absolute;inset:0;
+  background:linear-gradient(100deg,transparent 20%,rgba(255,255,255,.35) 50%,transparent 80%);
+  background-size:200% 100%;animation:shimmer 2.2s linear infinite}
+@keyframes shimmer{from{background-position:180% 0}to{background-position:-80% 0}}
+.bar-row .val{font-family:var(--mono);font-size:12px;color:var(--dim);text-align:right}
+.bar-row .sub2{display:block;font-size:12px;color:var(--dim);opacity:.7;margin-top:1px;white-space:nowrap}
+.bars-empty{color:var(--dim2);font-size:11px;letter-spacing:1px;padding:14px 4px;font-family:var(--mono)}
+
+/* ============ 模型矩阵 ============ */
+.models-panel{display:flex;flex-direction:column;min-height:0}
+.models-panel .p-body{flex:1;overflow-y:auto;min-height:0;padding:10px 14px}
+.vendor-g{margin-bottom:12px}
+.vendor-h{font-family:var(--mono);font-size:9.5px;letter-spacing:2.5px;color:var(--dim);margin:6px 2px 7px;
+  display:flex;align-items:center;gap:8px}
+.vendor-h::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{
+  font-family:var(--mono);font-size:11px;color:#a8d8f0;cursor:pointer;position:relative;
+  border:1px solid rgba(0,229,255,.2);border-radius:4px;padding:6px 10px;
+  background:linear-gradient(160deg,rgba(0,229,255,.05),rgba(124,77,255,.05));
+  transition:all .2s var(--ease);animation:chipin .45s var(--ease) both}
+@keyframes chipin{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:none}}
+.chip:hover{border-color:var(--cyan);color:#eafcff;transform:translateY(-2px);
+  box-shadow:0 4px 14px rgba(0,0,0,.4),0 0 14px rgba(0,229,255,.25);text-shadow:0 0 8px rgba(0,229,255,.6)}
+.chip:active{transform:translateY(0) scale(.93)}
+.chip.copied{border-color:var(--green);color:#8affd8;box-shadow:0 0 16px rgba(0,255,163,.35)}
+.models-empty{color:var(--dim2);font-size:11px;font-family:var(--mono);padding:16px 4px;letter-spacing:1px;line-height:2}
+
+/* ============ 底部双栏（模型消耗 TOP | 运行日志） ============ */
+.deck-bottom{flex:none;display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:0 16px 14px;height:230px;min-height:0}
+.deck-bottom .panel{display:flex;flex-direction:column;min-height:0}
+.deck-bottom .console-head{display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid rgba(0,229,255,.08);flex:none}
+.deck-bottom .console-head h2{font-size:12px;letter-spacing:3px;color:#a9c3e8;font-weight:600}
+.deck-bottom .console-head .en{font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:2px}
+.deck-bottom .log-stream,.deck-bottom .bars-wrap{flex:1;min-height:0;overflow-y:auto;padding:8px 16px 10px}
+.deck-bottom .bars-wrap{padding:10px 14px}
+.deck-bottom .console-panel{height:auto;margin:0}
+.deck-bottom .bars-empty{color:var(--dim2);font-size:11px;letter-spacing:1px;padding:14px 4px;font-family:var(--mono)}
+
+/* ============ 日志控制台 ============ */
+.console-panel{flex:none;height:172px;margin:0 16px 14px;display:flex;flex-direction:column}
+.console-head{display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid rgba(0,229,255,.08)}
+.console-head h2{font-size:11px;letter-spacing:3px;color:#a9c3e8;font-weight:600}
+.console-head .en{font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:2px}
+.console-actions{margin-left:auto;display:flex;gap:8px}
+.cbtn{font-size:10.5px;letter-spacing:1.5px;color:#9fb6dd;background:rgba(255,255,255,.03);
+  border:1px solid rgba(120,150,200,.22);border-radius:4px;padding:5px 11px;cursor:pointer;transition:all .2s}
+.cbtn:hover{color:#eafcff;border-color:var(--cyan);box-shadow:0 0 12px rgba(0,229,255,.15)}
+.cbtn:active{transform:scale(.94)}
+.cbtn.on{color:#8affd8;border-color:rgba(0,255,163,.5);background:rgba(0,255,163,.06)}
+.log-stream{flex:1;overflow-y:auto;padding:8px 16px 10px;font-family:var(--mono);font-size:11px;line-height:1.85}
+.log-line{animation:login .3s ease-out both;word-break:break-all}
+@keyframes login{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:none}}
+.log-line .lt{color:var(--dim2);margin-right:8px}
+.log-line .lv{display:inline-block;width:38px;margin-right:8px;font-weight:700;letter-spacing:1px}
+.log-line.sys .lv{color:var(--cyan)}
+.log-line.ok .lv{color:var(--green)}
+.log-line.err .lv{color:var(--red)}
+.log-line.net .lv{color:var(--violet)}
+.log-line.warn .lv{color:var(--amber)}
+.log-line .lm{color:#a9bdda}
+
+/* ============ 杀软提示横幅 ============ */
+.av-banner{
+  position:relative;margin:10px 16px 0;padding:10px 16px;border-radius:8px;font-size:12px;line-height:1.8;
+  color:#ffd77a;border:1px solid rgba(255,179,0,.35);overflow:hidden;
+  background:repeating-linear-gradient(-45deg,rgba(255,179,0,.06) 0 14px,transparent 14px 28px),rgba(30,22,4,.5);
+  animation:stripes 22s linear infinite;z-index:5}
+@keyframes stripes{to{background-position:396px 0,0 0}}
+.av-banner b{letter-spacing:1px}
+.av-banner .ibtn{margin-left:12px;vertical-align:middle}
+
+/* ============ 提示 Toast ============ */
+#toasts{position:fixed;top:70px;right:18px;z-index:60;display:flex;flex-direction:column;gap:9px;pointer-events:none}
+.toast{
+  min-width:230px;max-width:330px;padding:10px 14px 12px;border-radius:6px;font-size:12px;letter-spacing:.5px;
+  background:rgba(6,12,26,.92);border:1px solid var(--line);border-left:3px solid var(--cyan);
+  box-shadow:0 10px 30px rgba(0,0,0,.5);backdrop-filter:blur(8px);
+  animation:toastin .35s var(--ease) both;position:relative;overflow:hidden}
+.toast.out{animation:toastout .3s ease-in both}
+@keyframes toastin{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:none}}
+@keyframes toastout{to{opacity:0;transform:translateX(40px)}}
+.toast .t-title{font-weight:600;letter-spacing:1.5px;margin-bottom:2px}
+.toast .t-msg{color:var(--dim);font-family:var(--mono);font-size:10.5px;word-break:break-all}
+.toast.ok{border-left-color:var(--green)} .toast.ok .t-title{color:#8affd8}
+.toast.err{border-left-color:var(--red)} .toast.err .t-title{color:#ff9fb0}
+.toast.info{border-left-color:var(--violet)} .toast.info .t-title{color:#c9b3ff}
+.toast .t-bar{position:absolute;left:0;bottom:0;height:2px;width:100%;background:currentColor;opacity:.55;
+  transform-origin:left;animation:tbar 2.8s linear forwards}
+.toast.ok .t-bar{color:var(--green)}.toast.err .t-bar{color:var(--red)}.toast.info .t-bar{color:var(--violet)}
+@keyframes tbar{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+
+/* ============ 模态窗 ============ */
+.modal-mask{position:fixed;inset:0;z-index:50;background:rgba(2,4,10,.66);backdrop-filter:blur(6px);
+  display:flex;align-items:center;justify-content:center;animation:fadein .25s both}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+.modal-box{
+  width:640px;max-width:92vw;max-height:80vh;overflow-y:auto;position:relative;
+  background:linear-gradient(170deg,#0a1226,#060b18);border:1px solid rgba(0,229,255,.3);border-radius:10px;
+  padding:26px 30px;box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 40px rgba(0,229,255,.08);
+  animation:modalin .35s var(--ease) both}
+@keyframes modalin{from{opacity:0;transform:translateY(18px) scale(.97)}to{opacity:1;transform:none}}
+.modal-box::before,.modal-box::after{content:"";position:absolute;width:18px;height:18px}
+.modal-box::before{left:8px;top:8px;border-left:2px solid var(--cyan);border-top:2px solid var(--cyan)}
+.modal-box::after{right:8px;bottom:8px;border-right:2px solid var(--cyan);border-bottom:2px solid var(--cyan)}
+.modal-box h3{font-size:14px;letter-spacing:3px;color:#bfefff;margin-bottom:14px;display:flex;align-items:center;gap:10px}
+.modal-box h3 .tick{width:3px;height:15px;background:linear-gradient(180deg,var(--cyan),var(--violet));border-radius:2px}
+.modal-box .m-body{font-size:12.5px;line-height:2.1;color:#9fb6dd}
+.modal-box .m-body b{color:#c9ecff}
+.modal-box .m-body code{font-family:var(--mono);color:#7fe6ff;background:rgba(0,229,255,.07);padding:1px 6px;border-radius:3px;font-size:11.5px}
+.modal-close{position:absolute;top:14px;right:16px;width:26px;height:26px;border-radius:5px;border:1px solid var(--line);
+  background:transparent;color:var(--dim);cursor:pointer;font-size:13px;transition:all .2s}
+.modal-close:hover{color:#fff;border-color:var(--red);box-shadow:0 0 12px rgba(255,61,90,.3)}
+
+/* ============ 启动画面 ============ */
+#boot{position:fixed;inset:0;z-index:100;background:#020409;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:22px;transition:opacity .6s ease,visibility .6s;cursor:pointer}
+#boot.done{opacity:0;visibility:hidden}
+#boot .b-logo{width:84px;height:84px;animation:bootpulse 1.3s ease-in-out infinite;filter:drop-shadow(0 0 22px rgba(0,229,255,.5))}
+@keyframes bootpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+#boot .b-lines{font-family:var(--mono);font-size:12px;color:#6ee7ff;letter-spacing:1px;height:110px;width:420px;max-width:86vw}
+#boot .b-lines div{opacity:0;animation:login .2s forwards;line-height:2}
+#boot .b-lines .ok{color:var(--green)}
+#boot .b-bar{width:420px;max-width:86vw;height:3px;background:rgba(0,229,255,.1);border-radius:2px;overflow:hidden}
+#boot .b-bar i{display:block;height:100%;width:0;border-radius:2px;
+  background:linear-gradient(90deg,var(--cyan),var(--violet));box-shadow:0 0 12px var(--cyan);
+  transition:width .3s ease}
+#boot .b-skip{font-size:12px;color:var(--dim2);letter-spacing:3px;font-family:var(--mono)}
+
+/* ============ 演示模式徽标 ============ */
+#demoBadge{position:fixed;left:14px;bottom:12px;z-index:60;font-family:var(--mono);font-size:12px;
+  color:#ffb300;border:1px solid rgba(255,179,0,.4);padding:4px 10px;border-radius:4px;
+  background:rgba(30,22,4,.6);letter-spacing:2px;display:none}
+
+@media (max-width:1120px){
+  body{overflow:auto}
+  .app{height:auto;min-height:100vh}
+  .deck{grid-template-columns:1fr;height:auto}
+  /* 底部双栏保持左右分栏（模型消耗 TOP | 运行日志），窄屏也不上下堆叠 */
+  .deck-bottom{grid-template-columns:1fr 1fr}
+  .console-panel{height:200px}
+}
 </style>
 </head>
 <body>
@@ -379,8 +529,7 @@ body{
   <!-- 底部双栏：模型消耗 TOP | 运行日志 -->
   <footer class="deck-bottom">
     <section class="panel tilt">
-      <div class="console-head"><span class="tick"></span><h2>各模型消耗 TOP</h2><span class="en">MODEL USAGE</span>
-        <span class="calib-tip">点模型条校准官网 Token</span></div>
+      <div class="console-head"><span class="tick"></span><h2>各模型消耗 TOP</h2><span class="en">MODEL USAGE</span></div>
       <div class="bars-wrap" id="barsWrap"><div class="bars-empty">// 代理启动后自动统计流经数据</div></div>
     </section>
     <section class="panel console-panel tilt">
@@ -590,14 +739,13 @@ async function refreshStats(){
       // 官网无明细（个人账号）→ 模型条用本地统计兜底
       if (d && (d.models||{}) && Object.keys(d.models).length){
         const models = d.models;
-        const calibrated = d.calibrated || {};
         renderBars(Object.keys(models).map(k=>({name:k, ...models[k],
-          sum:(models[k].inputTokens||0)+(models[k].outputTokens||0)+(models[k].cacheReadTokens||0)})), true, calibrated);
+          sum:(models[k].inputTokens||0)+(models[k].outputTokens||0)+(models[k].cacheReadTokens||0)})));
       } else { wrap.innerHTML = '<div class="bars-empty">// 官网无明细 · 暂无本地数据</div>'; }
       return;
     }
     renderBars(mkeys.map(k=>({name:k, ...mb[k],
-      sum:(mb[k].in||0)+(mb[k].out||0)+(mb[k].cacheRead||0)})), false);
+      sum:(mb[k].in||0)+(mb[k].out||0)+(mb[k].cacheRead||0)})));
     return;
   }
   // ---- 后备：本地统计（官网不可用时）----
@@ -616,18 +764,45 @@ async function refreshStats(){
   const cost = d.cost || 0;
   $("statCost").textContent = "$" + cost.toFixed(4);
   $("statCostK").innerHTML = "估算金额<span class=\"en\">EST.</span>";
-  // 校准：覆盖式——有校准的模型已被官网值覆盖（后端已处理），这里只显示标记
-  const calibrated = d.calibrated || {};
-  const calibNames = Object.keys(calibrated).filter(k=>calibrated[k]);
   const cacheTotal = crT + (total.cacheWrite||0);
-  const subTxt = calibNames.length ? "已用官网校准 " + calibNames.length + " 个模型" : "本地估算";
-  $("statCostSub").textContent = cacheTotal>0 ? subTxt + ` · 缓存命中 ${(cacheTotal/(total.total||1)*100).toFixed(0)}%` : subTxt;
+  $("statCostSub").textContent = cacheTotal>0 ? `本地估算 · 缓存命中 ${(cacheTotal/(total.total||1)*100).toFixed(0)}%` : "本地估算";
   if (!names.length){ wrap.innerHTML = '<div class="bars-empty">// 暂无数据 · 跑几轮对话后点刷新</div>'; return; }
   renderBars(names.map(k=>({name:k, ...models[k],
-    sum:(models[k].inputTokens||0)+(models[k].outputTokens||0)+(models[k].cacheReadTokens||0)})), true, calibrated);
+    sum:(models[k].inputTokens||0)+(models[k].outputTokens||0)+(models[k].cacheReadTokens||0)})));
 }
 
-// 渲染用量窗口卡片（5小时 / 月度）：$used / $cap + 重置时间或百分比
+// 渲染模型消耗条（数据来自官网明细或本地兜底）。
+function renderBars(sorted){
+  const wrap = $("barsWrap");
+  const sorted9 = sorted.sort((a,b)=>b.sum-a.sum).slice(0,9);
+  const max = sorted9[0].sum || 1;
+  wrap.innerHTML = "";
+  sorted9.forEach((m,i)=>{
+    const row = document.createElement("div");
+    row.className = "bar-row";
+    row.style.animationDelay = (i*55)+"ms";
+    row.title = m.sum ? "官网/本地消耗统计" : "";
+    const c = vendorColor(m.name);
+    const inT = m.inputTokens || m.in || 0, outT = m.outputTokens || m.out || 0;
+    const crT = m.cacheReadTokens || m.cacheRead || 0;
+    const crPct = crT ? ` · ⚡缓存${fmt(crT)}` : "";
+    row.innerHTML = `<span class="name"></span>
+      <div class="bar-track"><div class="bar-fill" style="background:linear-gradient(90deg,${c},${c}88);box-shadow:0 0 10px ${c}55"></div></div>
+      <span class="val">${fmt(m.sum)}<em class="sub2">↑${fmt(inT)} / ↓${fmt(outT)}${crPct}</em></span>`;
+    row.querySelector(".name").textContent = m.name;
+    wrap.appendChild(row);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{ row.querySelector(".bar-fill").style.width = Math.max(3, m.sum/max*100) + "%"; }));
+  });
+}
+
+// 用量窗口渲染：5 小时限额 / 周用量（官网 windowLimits）
+// 用量窗口渲染：5 小时限额 / 周用量（官网 windowLimits）
+function fmtTime(ms){
+  if (!ms) return "—";
+  const d = new Date(ms);
+  const p = n => String(n).padStart(2,"0");
+  return `${d.getMonth()+1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
 function renderWindow(vId, capId, subId, w, label){
   const v = $(vId), cap = $(capId), sub = $(subId);
   if (!w || !w.cap){ v.textContent = "--"; cap.textContent = ""; sub.textContent = "官网未返回"; return; }
@@ -638,49 +813,7 @@ function renderWindow(vId, capId, subId, w, label){
   else if (w.monthly){ sub.textContent = "已用 " + pct + "%"; sub.style.color = pct >= 80 ? "#ff9d7d" : ""; }
   else { sub.textContent = "重置于 " + fmtTime(w.resetAt); sub.style.color = ""; }
 }
-function fmtTime(ms){
-  if (!ms) return "--";
-  const d = new Date(ms);
-  return String(d.getHours()).padStart(2,"0") + ":" + String(d.getMinutes()).padStart(2,"0");
-}
 
-// 渲染模型消耗条；calib=true 时可点击校准（仅本地后备模式）。
-function renderBars(sorted, calib, calibrated){
-  const wrap = $("barsWrap");
-  const sorted9 = sorted.sort((a,b)=>b.sum-a.sum).slice(0,9);
-  const max = sorted9[0].sum || 1;
-  wrap.innerHTML = "";
-  sorted9.forEach((m,i)=>{
-    const row = document.createElement("div");
-    row.className = "bar-row" + (calib ? " calib-row" : "");
-    row.style.animationDelay = (i*55)+"ms";
-    if (calib){ row.style.cursor = "pointer"; row.title = "点击校准该模型（填官网 Token 数，覆盖本地）"; }
-    else { row.title = "官网直连 · 无需校准"; }
-    const c = vendorColor(m.name);
-    const isCal = calib && calibrated && calibrated[m.name];
-    const diffTxt = isCal ? ` <span style="color:#7dffb0">✓已校准</span>` : "";
-    const inT = m.inputTokens || m.in || 0, outT = m.outputTokens || m.out || 0;
-    const crT = m.cacheReadTokens || m.cacheRead || 0;
-    const crPct = crT ? ` · ⚡缓存${fmt(crT)}` : "";
-    row.innerHTML = `<span class="name"></span>
-      <div class="bar-track"><div class="bar-fill" style="background:linear-gradient(90deg,${c},${c}88);box-shadow:0 0 10px ${c}55"></div></div>
-      <span class="val">${fmt(m.sum)}${diffTxt}<em class="sub2">↑${fmt(inT)} / ↓${fmt(outT)}${crPct}</em></span>`;
-    row.querySelector(".name").textContent = m.name;
-    if (calib) row.onclick = ()=>calibModel(m.name);
-    wrap.appendChild(row);
-    requestAnimationFrame(()=>requestAnimationFrame(()=>{ row.querySelector(".bar-fill").style.width = Math.max(3, m.sum/max*100) + "%"; }));
-  });
-}
-
-// 点击模型条 → 弹输入框校准该模型（填官网 Token 数，覆盖本地；留空=清除校准）
-function calibModel(model){
-  const v = prompt("校准 " + model + "\n填官网该模型的总 Token 数（覆盖本地统计；留空=清除校准）：", "");
-  if (v === null) return;
-  call("Calib", model, v.trim()).then(r=>{
-    if (r && r.ok){ log("ok", model + " 校准已保存"); toast("ok","校准已保存", model); refreshStats(); }
-    else { log("err", "保存失败: " + ((r&&r.msg)||"未知")); }
-  });
-}
 
 async function loadModels(){
   const d = await call("Models");
@@ -868,7 +1001,7 @@ $("modelRefBtn").onclick = ()=>openModal(REF_HTML);
     ["COMMANDCODE PROXY DECK v2.1.0", 0],
     ["初始化神经链路 ......... <span class='ok'>OK</span>", 260],
     ["装载代理核心 v1.0.9 .... <span class='ok'>OK</span>", 300],
-    ["校准全息界面 ........... <span class='ok'>OK</span>", 300],
+    ["装载全息界面 ........... <span class='ok'>OK</span>", 300],
     ["系统就绪 · SYSTEM READY", 260]
   ];
   const box = $("bootLines"), bar = $("bootBar"), bootEl = $("boot");
