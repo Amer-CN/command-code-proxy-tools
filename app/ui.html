@@ -722,7 +722,7 @@ async function refreshStats(){
     $("statCost").textContent = "$" + (u.costUSD||0).toFixed(4);
     $("statCostK").innerHTML = "官网金额<span class=\"en\">OFFICIAL</span>";
     const cr = u.creditsAvailable||0, pct = u.percentUsed||0;
-    $("statCostSub").textContent = (cr>0 ? `官网账单 · 可用 $${cr.toFixed(2)} · 已用 ${pct.toFixed(1)}%` : "官网账单");
+    $("statCostSub").textContent = (cr>0 ? `可用 $${cr.toFixed(2)} · 已用 ${pct.toFixed(1)}%` : "官网金额");
     countUp($("statTotal"), u.totalTokens||0);
     $("statTotalSub").textContent = `↑${fmt(u.tokensIn||0)} / ↓${fmt(u.tokensOut||0)} · 官网`;
     const todayN = u.todayTokens || ltoday.total || 0;
