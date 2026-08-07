@@ -9,8 +9,7 @@ v2.0 起，控制台从 HTA 全面重做：**科幻全息界面的独立 exe 程
 v2.1 起新增**官网权威统计**：直连 CommandCode 官方账单接口，金额 / 总 Token / 运行次数 /
 套餐额度全部以官网为准（不再依赖本地估算），仅需在控制台填一次 API Key。
 
-> 代理核心来自 [dev2k6/command-code-proxy-server](https://github.com/dev2k6/command-code-proxy-server)（上游 v1.0.9）。
-> 上游原始 README 存档于 [UPSTREAM_README.md](UPSTREAM_README.md)。
+代理核心来自 [dev2k6/command-code-proxy-server](https://github.com/dev2k6/command-code-proxy-server)（上游 v1.0.9）。
 
 ## 为什么需要它
 
