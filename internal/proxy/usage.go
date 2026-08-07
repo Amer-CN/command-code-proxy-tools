@@ -36,6 +36,16 @@ type usageSummary struct {
 	ModelBreakdown map[string]itemTokens `json:"modelBreakdown,omitempty"`
 	// 今日（本地时区）总 token（items 聚合）
 	TodayTokens int64 `json:"todayTokens"`
+	// 用量窗口限额（credits.windowLimits）：5 小时 / 滚动周期（月度）
+	FiveHour *winLimit `json:"fiveHour,omitempty"`
+	Weekly   *winLimit `json:"weekly,omitempty"`
+}
+
+// winLimit 一个用量窗口的已用/上限/重置时间（USD）。
+type winLimit struct {
+	Used    float64 `json:"used"`
+	Cap     float64 `json:"cap"`
+	ResetAt int64   `json:"resetAt"` // epoch 毫秒
 }
 
 // handleUsage queries CommandCode's usage endpoints (same calls the CLI /usage
@@ -192,9 +202,31 @@ func (p *Proxy) HandleUsage(w http.ResponseWriter, r *http.Request) {
 			PurchasedCredits float64 `json:"purchasedCredits"`
 			FreeCredits      float64 `json:"freeCredits"`
 		} `json:"credits"`
+		WindowLimits *struct {
+			Limited bool `json:"limited"`
+			FiveHour *struct {
+				Used    float64 `json:"used"`
+				Cap     float64 `json:"cap"`
+				ResetAt int64   `json:"resetAt"`
+			} `json:"fiveHour"`
+			Weekly *struct {
+				Used    float64 `json:"used"`
+				Cap     float64 `json:"cap"`
+				ResetAt int64   `json:"resetAt"`
+			} `json:"weekly"`
+		} `json:"windowLimits"`
 	}
 	if sum.Credits != nil {
 		_ = json.Unmarshal(sum.Credits, &credits)
+	}
+	// 用量窗口：5 小时 / 滚动周期（月度），暴露给前端显示限额进度
+	if w := credits.WindowLimits; w != nil {
+		if w.FiveHour != nil {
+			sum.FiveHour = &winLimit{Used: w.FiveHour.Used, Cap: w.FiveHour.Cap, ResetAt: w.FiveHour.ResetAt}
+		}
+		if w.Weekly != nil {
+			sum.Weekly = &winLimit{Used: w.Weekly.Used, Cap: w.Weekly.Cap, ResetAt: w.Weekly.ResetAt}
+		}
 	}
 	sum.PlanID = sub.Data.PlanID
 	sum.PlanLabel = planLabel(sub.Data.PlanID)

@@ -118,8 +118,8 @@ body{
 
 /* ============ 反应堆核心 ============ */
 .core-panel{display:flex;flex-direction:column}
-.core-panel .p-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:0}
-.reactor{position:relative;width:270px;height:270px;flex:none;cursor:pointer;outline:none;
+.core-panel .p-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:0}
+.reactor{position:relative;width:240px;height:240px;flex:none;cursor:pointer;outline:none;
   --rc:#3d5a80; --rc-glow:rgba(61,90,128,.4); transition:filter .5s}
 .reactor .holo-base{position:absolute;left:50%;bottom:8px;width:220px;height:56px;transform:translateX(-50%);
   background:radial-gradient(ellipse at center,var(--rc-glow),transparent 68%);filter:blur(6px);transition:background .6s}
@@ -171,7 +171,7 @@ body{
 .reactor.ext{ --rc:#7c4dff; --rc-glow:rgba(124,77,255,.35)}
 .reactor.ext .core svg{stroke:#b9a5ff}
 /* 状态文案 */
-.status-big{font-size:23px;font-weight:700;letter-spacing:5px;margin-top:6px;transition:color .4s;
+.status-big{font-size:23px;font-weight:700;letter-spacing:5px;margin-top:0;transition:color .4s;
   text-shadow:0 0 18px rgba(0,229,255,.0)}
 .status-big.glow-run{color:#8affd8;text-shadow:0 0 22px rgba(0,255,163,.5)}
 .status-big.glow-st{color:#ffd77a;text-shadow:0 0 22px rgba(255,179,0,.45)}
@@ -183,11 +183,11 @@ body{
   transition:all .25s;letter-spacing:.5px}
 .endpoint:hover{background:rgba(0,229,255,.14);box-shadow:0 0 16px rgba(0,229,255,.18);transform:translateY(-1px)}
 .endpoint:active{transform:translateY(1px) scale(.98)}
-.meta-row{display:flex;gap:22px;margin-top:12px}
+.meta-row{display:flex;gap:22px;margin-top:8px}
 .meta{text-align:center}
 .meta .v{font-family:var(--mono);font-size:14px;color:#bfefff}
 .meta .k{font-size:12px;color:var(--dim);letter-spacing:2px;margin-top:2px}
-.eq{display:flex;align-items:flex-end;gap:3px;height:26px;margin-top:14px}
+.eq{display:flex;align-items:flex-end;gap:3px;height:20px;margin-top:6px}
 .eq i{width:4px;height:4px;background:linear-gradient(180deg,var(--cyan),var(--violet));border-radius:1px;
   animation:eqb 1s ease-in-out infinite;animation-play-state:paused;opacity:.25;transition:opacity .5s}
 .reactor-zone.running .eq i{opacity:.9;animation-play-state:running}
@@ -245,7 +245,8 @@ body{
 .stat-card.vio::before{background:linear-gradient(180deg,var(--violet),transparent)}
 .stat-card.grn::before{background:linear-gradient(180deg,var(--green),transparent)}
 /* 模型消耗条 */
-.bars-head{display:flex;align-items:center;margin:14px 0 8px}
+.bars-head{display:flex;align-items:center;margin:12px 0 8px}
+.bars-head .calib-tip{margin-left:auto;font-size:12px;color:#5f7398}
 .bars-head .t{font-size:12px;color:var(--dim);letter-spacing:2px}
 .bars-wrap{flex:1;overflow-y:auto;min-height:0;padding-right:4px}
 .bar-row{display:grid;grid-template-columns:150px 1fr 150px;gap:10px;align-items:center;margin-bottom:7px;
@@ -285,7 +286,7 @@ body{
 .models-empty{color:var(--dim2);font-size:11px;font-family:var(--mono);padding:16px 4px;letter-spacing:1px;line-height:2}
 
 /* ============ 日志控制台 ============ */
-.console-panel{flex:none;height:172px;margin:0 16px 14px;display:flex;flex-direction:column}
+.console-panel{flex:none;height:108px;margin:0 16px 14px;display:flex;flex-direction:column}
 .console-head{display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid rgba(0,229,255,.08)}
 .console-head h2{font-size:11px;letter-spacing:3px;color:#a9c3e8;font-weight:600}
 .console-head .en{font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:2px}
@@ -492,21 +493,19 @@ body{
       </section>
 
       <section class="panel telemetry tilt">
-        <div class="p-head"><span class="tick"></span><h2>链路监测</h2><span class="en">TELEMETRY</span></div>
+        <div class="p-head"><span class="tick"></span><h2>链路监测</h2><span class="en">TELEMETRY</span>
+          <button class="ibtn" id="refreshStats" style="margin-left:10px">↻ 刷新</button></div>
         <div class="p-body">
           <div class="stat-grid">
             <div class="stat-card"><div class="k">总消耗 TOKEN</div><div><span class="v" id="statTotal">0</span><span class="u">tok</span></div><div class="sub" id="statTotalSub">↑0 / ↓0</div></div>
             <div class="stat-card vio"><div class="k">今日消耗</div><div><span class="v" id="statToday">0</span><span class="u">tok</span></div><div class="sub" id="statTodaySub">↑0 / ↓0</div></div>
             <div class="stat-card grn"><div class="k">运行次数</div><div><span class="v" id="statRuns">0</span><span class="u">runs</span></div><div class="sub" id="statModels">0 个模型</div></div>
             <div class="stat-card amb"><div class="k" id="statCostK">估算金额<span class="en">EST.</span></div><div><span class="v" id="statCost">$0.00</span><span class="u">USD</span></div><div class="sub" id="statCostSub">按官方单价估算</div></div>
+            <div class="stat-card vio"><div class="k">5小时用量</div><div><span class="v" id="stat5h">--</span><span class="u" id="stat5hCap"></span></div><div class="sub" id="stat5hSub">—</div></div>
+            <div class="stat-card grn"><div class="k">月度用量</div><div><span class="v" id="statPeriod">--</span><span class="u" id="statPeriodCap"></span></div><div class="sub" id="statPeriodSub">—</div></div>
           </div>
-          <div class="bars-head"><span class="t">各模型消耗 TOP</span></div>
+          <div class="bars-head"><span class="t">各模型消耗 TOP</span><span class="calib-tip">点模型条可校准官网 Token</span></div>
           <div class="bars-wrap" id="barsWrap"><div class="bars-empty">// 代理启动后自动统计流经数据</div></div>
-          <div class="tel-actions">
-            <button class="ibtn" id="refreshStats">↻ 刷新数据</button>
-            <button class="ibtn violet" id="openUsage">⌁ 官方用量页</button>
-            <span class="calib-tip" style="font-size:12px;color:#5f7398">点模型条可校准官网 Token</span>
-          </div>
         </div>
       </section>
     </div>
@@ -718,6 +717,10 @@ async function refreshStats(){
     $("statTodaySub").textContent = u.todayTokens ? "今日（官网明细）" : (ltoday.total ? `↑${fmt(ltoday.input)} / ↓${fmt(ltoday.output)} · 本地` : "今日");
     countUp($("statRuns"), u.totalRuns||0);
     $("statModels").textContent = (u.planLabel||"未命名计划") + (u.daysLeft ? ` · 剩 ${u.daysLeft} 天` : "");
+    // 用量窗口：5 小时限额 / 月度用量（账单周期累计 ÷ 月额度）
+    renderWindow("stat5h", "stat5hCap", "stat5hSub", u.fiveHour, "5小时");
+    renderWindow("statPeriod", "statPeriodCap", "statPeriodSub",
+      {used: u.costUSD||0, cap: u.creditsAvailable||0, monthly:true}, "月度");
     const mb = u.modelBreakdown || {};
     const mkeys = Object.keys(mb);
     if (!mkeys.length){
@@ -759,6 +762,23 @@ async function refreshStats(){
   if (!names.length){ wrap.innerHTML = '<div class="bars-empty">// 暂无数据 · 跑几轮对话后点刷新</div>'; return; }
   renderBars(names.map(k=>({name:k, ...models[k],
     sum:(models[k].inputTokens||0)+(models[k].outputTokens||0)+(models[k].cacheReadTokens||0)})), true, calibrated);
+}
+
+// 渲染用量窗口卡片（5小时 / 月度）：$used / $cap + 重置时间或百分比
+function renderWindow(vId, capId, subId, w, label){
+  const v = $(vId), cap = $(capId), sub = $(subId);
+  if (!w || !w.cap){ v.textContent = "--"; cap.textContent = ""; sub.textContent = "官网未返回"; return; }
+  v.textContent = "$" + (w.used||0).toFixed(2);
+  cap.textContent = "/ $" + w.cap.toFixed(2);
+  const pct = (w.used/w.cap*100).toFixed(0);
+  if (w.used >= w.cap){ sub.textContent = "⚠ 已达上限"; sub.style.color = "#ff9d7d"; }
+  else if (w.monthly){ sub.textContent = "已用 " + pct + "%"; sub.style.color = pct >= 80 ? "#ff9d7d" : ""; }
+  else { sub.textContent = "重置于 " + fmtTime(w.resetAt); sub.style.color = ""; }
+}
+function fmtTime(ms){
+  if (!ms) return "--";
+  const d = new Date(ms);
+  return String(d.getHours()).padStart(2,"0") + ":" + String(d.getMinutes()).padStart(2,"0");
 }
 
 // 渲染模型消耗条；calib=true 时可点击校准（仅本地后备模式）。
@@ -888,8 +908,7 @@ $("apiKey").addEventListener("change", async e=>{
   if (r && r.ok){ log("ok", r.msg || "Key 已保存"); toast("ok","Key 已自动保存",""); }
   else { log("err", "保存 Key 失败: " + (r&&r.msg||"未知错误")); }
 });
-$("refreshStats").onclick = ()=>{ refreshStats(); log("sys","手动刷��链路监测数据"); };
-$("openUsage").onclick = ()=>{ call("Open","https://commandcode.ai/settings/usage"); log("net","已在浏览器打开官方用量页"); };
+$("refreshStats").onclick = ()=>{ refreshStats(); log("sys","手动刷新链路监测数据"); };
 $("clearLog").onclick = ()=>{ logStream.innerHTML=""; log("sys","日志已清空"); };
 $("avDismiss").onclick = ()=>{ $("avBanner").style.display="none"; call("Dismiss"); log("sys","已关闭安全提示（不再显示）"); };
 $("closeDismiss").onclick = ()=>{ $("closeBanner").style.display="none"; call("DismissCloseHint"); log("sys","已关闭关窗提示（不再显示）"); };
