@@ -21,10 +21,12 @@ stats.json
 stats.json.tmp
 notice_dismissed.flag
 headless-error.log
+close_hint_dismissed.flag
 
 # Release build artifacts
 CommandCodeProxyDeck.exe
 CommandCode代理-便携版.zip
+CommandCodeProxyDeck-Portable.zip
 *.exe~
 calibration.txt
 calibration.json

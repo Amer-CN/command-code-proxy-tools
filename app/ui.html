@@ -104,7 +104,7 @@ body{
   background:var(--glass);backdrop-filter:blur(12px);
   box-shadow:0 0 0 1px rgba(0,0,0,.35),0 18px 50px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.04);
   transition:transform .18s ease-out,border-color .3s,box-shadow .3s;
-  transform-style:preserve-3d;will-change:transform;overflow:hidden;
+  overflow:hidden;
 }
 .panel:hover{border-color:rgba(0,229,255,.32);box-shadow:0 0 0 1px rgba(0,0,0,.35),0 18px 50px rgba(0,0,0,.5),0 0 24px rgba(0,229,255,.06),inset 0 1px 0 rgba(255,255,255,.05)}
 .panel::before,.panel::after{content:"";position:absolute;width:14px;height:14px;pointer-events:none;opacity:.85}
@@ -953,6 +953,8 @@ $("modelRefBtn").onclick = ()=>openModal(REF_HTML);
 })();
 
 /* ---------------- 3D 视差 ---------------- */
+/* 注意：面板只能用 2D 位移做视差——rotateX/Y 3D 变换会让文字被 GPU 透视
+   重采样，在 WebView2 上明显发虚（用户反馈的"界面朦胧"就是它）。 */
 (function parallax(){
   let tx=0, ty=0, cx2=0, cy2=0;
   addEventListener("mousemove", e=>{ tx=(e.clientX/innerWidth-.5); ty=(e.clientY/innerHeight-.5); });
@@ -960,16 +962,15 @@ $("modelRefBtn").onclick = ()=>openModal(REF_HTML);
     cx2 += (tx-cx2)*.06; cy2 += (ty-cy2)*.06;
     document.querySelectorAll(".nebula.n1").forEach(e=>e.style.marginLeft = cx2*-34+"px");
     document.querySelectorAll(".nebula.n2").forEach(e=>e.style.marginLeft = cx2*26+"px");
-    document.querySelectorAll(".tilt:hover").forEach(()=>{});
     requestAnimationFrame(loop);
   })();
   document.querySelectorAll(".tilt").forEach(p=>{
     p.addEventListener("mousemove", e=>{
       const r = p.getBoundingClientRect();
-      const rx = ((e.clientY-r.top)/r.height-.5)*-2.2, ry = ((e.clientX-r.left)/r.width-.5)*2.2;
-      p.style.transform = `perspective(1200px) rotateX(${rx}deg) rotateY(${ry}deg)`;
+      const dx = ((e.clientX-r.left)/r.width-.5)*7, dy = ((e.clientY-r.top)/r.height-.5)*7;
+      p.style.transform = `translate(${dx}px, ${dy}px)`;
     });
-    p.addEventListener("mouseleave", ()=>{ p.style.transform = "perspective(1200px) rotateX(0) rotateY(0)"; });
+    p.addEventListener("mouseleave", ()=>{ p.style.transform = ""; });
   });
 })();
 
