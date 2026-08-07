@@ -57,11 +57,11 @@ body{
   background:repeating-linear-gradient(0deg,rgba(255,255,255,.022) 0 1px,transparent 1px 3px);
 }
 .scanbeam{
-  position:fixed;left:0;right:0;height:140px;z-index:3;pointer-events:none;
+  position:fixed;left:0;right:0;top:-20%;height:140px;z-index:3;pointer-events:none;
   background:linear-gradient(180deg,transparent,rgba(0,229,255,.045) 45%,rgba(0,229,255,.09) 50%,rgba(0,229,255,.045) 55%,transparent);
   animation:beam 9s linear infinite;
 }
-@keyframes beam{0%{top:-20%}100%{top:120%}}
+@keyframes beam{0%{transform:translateY(0)}100%{transform:translateY(140vh)}}
 .vignette{position:fixed;inset:0;z-index:3;pointer-events:none;background:radial-gradient(120% 90% at 50% 45%,transparent 55%,rgba(0,0,5,.55) 100%)}
 
 /* ============ 布局骨架 ============ */
@@ -188,10 +188,11 @@ body{
 .meta .v{font-family:var(--mono);font-size:14px;color:#bfefff}
 .meta .k{font-size:12px;color:var(--dim);letter-spacing:2px;margin-top:2px}
 .eq{display:flex;align-items:flex-end;gap:3px;height:26px;margin-top:14px}
-.eq i{width:4px;height:4px;background:linear-gradient(180deg,var(--cyan),var(--violet));border-radius:1px;
+.eq i{width:4px;height:24px;background:linear-gradient(180deg,var(--cyan),var(--violet));border-radius:1px;
+  transform-origin:50% 100%;
   animation:eqb 1s ease-in-out infinite;animation-play-state:paused;opacity:.25;transition:opacity .5s}
 .reactor-zone.running .eq i{opacity:.9;animation-play-state:running}
-@keyframes eqb{0%,100%{height:4px}50%{height:24px}}
+@keyframes eqb{0%,100%{transform:scaleY(.16)}50%{transform:scaleY(1)}}
 .hint-line{font-size:11px;color:var(--dim);letter-spacing:1px;margin-top:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hint-line b{color:#b7e6ff;font-weight:600}
 
@@ -316,6 +317,16 @@ body{
 .log-line .lm{color:#c3d4ee}
 
 /* ============ 杀软提示横幅 ============ */
+.upd-banner{
+  flex:none;margin:8px 16px 0;padding:9px 16px;border-radius:8px;font-size:12.5px;letter-spacing:.5px;
+  color:#9dffd0;border:1px solid rgba(0,255,170,.4);display:flex;align-items:center;gap:10px;
+  background:linear-gradient(90deg,rgba(0,255,170,.09),rgba(0,229,255,.05));
+  animation:updin .35s var(--ease) both}
+@keyframes updin{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+.upd-banner b{color:#c8ffe8;letter-spacing:1px}
+.upd-banner a{color:var(--cyan);text-decoration:none;border-bottom:1px dashed var(--cyan);cursor:pointer;margin-left:auto;flex:none}
+.upd-banner a:hover{color:#fff}
+.upd-banner .ibtn{margin-left:12px;vertical-align:middle}
 .av-banner{
   position:relative;margin:10px 16px 0;padding:10px 16px;border-radius:8px;font-size:12px;line-height:1.8;
   color:#ffd77a;border:1px solid rgba(255,179,0,.35);overflow:hidden;
@@ -441,6 +452,12 @@ body{
   <div class="av-banner" id="avBanner" style="display:none">
     <b>⚠ 安全软件提示</b>：本程序为未签名的开源工具，首次运行 SmartScreen / 火绒 / 360 可能提示（选择「仍要运行 / 允许」即可）；「开机自启」会向启动文件夹写入脚本，同样请选择允许。
     <button class="ibtn" id="avDismiss">知道了，不再提示</button>
+  </div>
+
+  <!-- 版本更新提示（检查到新 Release 时显示） -->
+  <div class="upd-banner" id="updBanner" style="display:none">
+    <span>⚡ 发现新版本 <b id="updVer">—</b>（当前 <b id="updCur">v2.1.0</b>）</span>
+    <a id="updGo" href="#">前往下载 →</a>
   </div>
 
   <!-- 关窗提示（首次） -->
@@ -627,7 +644,7 @@ async function copyText(text, label){
 }
 
 /* ---------------- 状态机 ---------------- */
-const S = { phase:"boot", uptime:0, autostart:false, modelsLoaded:false };
+const S = { phase:"boot", uptime:0, autostart:false, modelsLoaded:false, healFail:0 };
 const PH = {
   idle:     {big:"系统待命",   sub:"CORE STANDBY",            pill:"待命",   pillCls:"idle",     reactor:"",     bigCls:""},
   starting: {big:"点火序列",   sub:"IGNITION SEQUENCE",       pill:"点火中", pillCls:"starting", reactor:"st",   bigCls:"glow-st"},
@@ -869,6 +886,21 @@ async function pollState(){
   if (st.apiKey && !$("apiKey").dataset.touched && !$("apiKey").value){ $("apiKey").value = st.apiKey; }
   if (st.noticeDismissed === false){ $("avBanner").style.display = "block"; }
   if (st.closeHintDismissed === false){ $("closeBanner").style.display = "block"; }
+  // 自愈：代理曾成功运行过，但现在端口无健康响应（异常退出/被杀）→ 自动重新点火。
+  // 连续 3 次失败则停止自动尝试（避免死循环），提示手动处理。
+  if (st.startedOnce && !st.running && !st.external && !$("toggleCore").disabled){
+    if (!S.healFail){ S.healFail = 0; }
+    if (S.healFail < 3){
+      S.healFail++;
+      log("warn", `自愈检测：后台代理无响应（第 ${S.healFail} 次尝试），自动重新点火…`);
+      const r = await call("Start", $("apiKey").value.trim());
+      if (r && r.ok){ S.healFail = 0; log("ok", "自愈成功 · " + (r.msg||"代理已恢复")); toast("ok","代理已自动恢复",""); }
+      else { log("err", "自愈失败：" + ((r&&r.msg)||"未知") + "（将自动重试）"); }
+    } else if (S.healFail === 3){
+      S.healFail++;
+      log("err", "自愈连续失败，已停止自动尝试 · 请点击核心手动点火");
+    }
+  }
 }
 setInterval(()=>{ if (S.phase==="running"||S.phase==="external"){ S.uptime++; } $("uptimeV").textContent = fmtUptime(S.uptime); }, 1000);
 setInterval(pollState, 2500);
@@ -1022,6 +1054,23 @@ $("modelRefBtn").onclick = ()=>openModal(REF_HTML);
 if (!HAS_BRIDGE) $("demoBadge").style.display = "block";
 pollState();
 if (!HAS_BRIDGE && qs.get("state")==="running") setTimeout(()=>toggleCore(), 300);
+
+/* ---------------- 版本更新检查 ---------------- */
+// 启动后异步查 GitHub 最新 Release（api.github.com；被墙/离线时静默跳过）。
+(async function checkUpdate(){
+  if (!HAS_BRIDGE) return;
+  try {
+    const r = await call("CheckUpdate");
+    if (!r || !r.ok || !r.latest) return;
+    const cur = "v2.1.0";
+    if (r.latest === cur) return;
+    $("updVer").textContent = r.latest;
+    $("updCur").textContent = cur;
+    $("updGo").onclick = (e)=>{ e.preventDefault(); call("Open", r.url); };
+    $("updBanner").style.display = "flex";
+    log("ok", "检测到新版本 " + r.latest + "（当前 " + cur + "）→ 可在顶部横幅前往下载");
+  } catch(e){ /* 静默 */ }
+})();
 </script>
 </body>
 </html>

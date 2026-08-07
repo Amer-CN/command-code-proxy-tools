@@ -115,6 +115,13 @@ func (a *app) start(key string) (string, error) {
 	if key != "" {
 		cmd.Args = append(cmd.Args, "-api-key", key)
 	}
+	// headless 的 stdout/stderr 落盘（headless-error.log，与 exe 同目录），
+	// 后台异常时可查原因；日志文件已加入 .gitignore。
+	if lf, err := os.OpenFile(filepath.Join(exeDir(), "headless-error.log"),
+		os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644); err == nil {
+		cmd.Stdout = lf
+		cmd.Stderr = lf
+	}
 	if err := cmd.Start(); err != nil {
 		return "", fmt.Errorf("启动后台代理失败: %v", err)
 	}
@@ -176,6 +183,7 @@ type stateMsg struct {
 	NoticeDismissed bool   `json:"noticeDismissed"`
 	CloseHintDone    bool   `json:"closeHintDismissed"`
 	Version         string `json:"version"`
+	StartedOnce     bool   `json:"startedOnce"` // stats.json 存在且 started>0：代理曾成功运行过
 	Core            string `json:"core"`
 	PID             int    `json:"pid"`
 	LastErr         string `json:"lastErr,omitempty"`
@@ -211,6 +219,16 @@ func (a *app) state() stateMsg {
 	if running {
 		up = int64(time.Since(started).Seconds())
 	}
+	// 曾成功运行过？读 stats.json 的 started 字段（>0 即曾运行）。
+	startedOnce := false
+	if b, err := os.ReadFile(a.statsFile()); err == nil {
+		var st struct {
+			Started int64 `json:"started"`
+		}
+		if json.Unmarshal(b, &st) == nil && st.Started > 0 {
+			startedOnce = true
+		}
+	}
 	return stateMsg{
 		Running: running, External: external, Phase: phase,
 		Host: a.host, Port: a.port, BaseURL: a.baseURL() + "/v1",
@@ -218,6 +236,7 @@ func (a *app) state() stateMsg {
 		NoticeDismissed: fileExists(a.noticeFile()),
 		CloseHintDone:   fileExists(a.closeHintFile()),
 		Version: appVersion, Core: coreVersion, PID: os.Getpid(), LastErr: lastErr,
+		StartedOnce: startedOnce,
 	}
 }
 
@@ -406,6 +425,27 @@ func (a *app) bindAll(w webview.WebView) {
 		}
 		a.apiKey = key
 		return jsonOK("API Key 已保存")
+	})
+	// 版本更新检查：查 GitHub Releases 最新版（api.github.com，被墙时静默失败）。
+	_ = w.Bind("ccCheckUpdate", func() string {
+		type rel struct {
+			TagName string `json:"tag_name"`
+			HTMLURL string `json:"html_url"`
+		}
+		resp, err := httpClientSlow.Get("https://api.github.com/repos/Amer-CN/command-code-proxy-tools/releases/latest")
+		if err != nil {
+			return `{"ok":false,"msg":"网络不可用"}`
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			return `{"ok":false,"msg":"HTTP "` + fmt.Sprintf("%d", resp.StatusCode) + `}`
+		}
+		var r rel
+		if json.NewDecoder(resp.Body).Decode(&r) != nil || r.TagName == "" {
+			return `{"ok":false,"msg":"解析失败"}`
+		}
+		b, _ := json.Marshal(map[string]any{"ok": true, "latest": r.TagName, "url": r.HTMLURL})
+		return string(b)
 	})
 	_ = w.Bind("ccCalib", func(model, v string) string {
 		v = strings.TrimSpace(v)

@@ -23,6 +23,40 @@ func setDPIAware() {
 	}
 }
 
+// initialWindowSize 按主屏逻辑分辨率自适应初始窗口大小：
+// 高分辨率屏（2K/4K）自动放大，普通 1080p 保持 1280x800，且不超出屏幕工作区。
+func initialWindowSize() (int, int) {
+	user32 := syscall.NewLazyDLL("user32.dll")
+	sm := user32.NewProc("GetSystemMetrics")
+	sw, _, _ := sm.Call(0) // SM_CXSCREEN
+	sh, _, _ := sm.Call(1) // SM_CYSCREEN
+	if sw <= 0 || sh <= 0 {
+		return 1280, 800
+	}
+	w := int(sw) * 4 / 5
+	h := int(sh) * 4 / 5
+	if w > 1600 {
+		w = 1600
+	}
+	if h > 1000 {
+		h = 1000
+	}
+	if w < 1080 {
+		w = 1080
+	}
+	if h < 680 {
+		h = 680
+	}
+	// 兜底：任何情况下不超出屏幕
+	if w > int(sw)*95/100 {
+		w = int(sw) * 95 / 100
+	}
+	if h > int(sh)*95/100 {
+		h = int(sh) * 95 / 100
+	}
+	return w, h
+}
+
 // enableDarkTitleBar 把原生标题栏切换为深色沉浸式（Win10 1809+ / Win11）。
 func enableDarkTitleBar(hwnd uintptr) {
 	defer func() { _ = recover() }()

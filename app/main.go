@@ -128,7 +128,8 @@ func main() {
 		os.Exit(1)
 	}
 	w.SetTitle(appTitle)
-	w.SetSize(1280, 800, webview.HintNone)
+	iw, ih := initialWindowSize()
+	w.SetSize(iw, ih, webview.HintNone)
 	defer w.Destroy()
 	// 注意：代理以独立 headless 子进程常驻，关窗不停止代理。
 	// 需要停代理时，在界面里点能量核心停堆即可。
