@@ -82,7 +82,7 @@ body{
   -webkit-background-clip:text;background-clip:text;color:transparent}
 .subtitle{font-size:11px;color:var(--dim);letter-spacing:4px}
 .spacer{flex:1}
-.ver-chip{font-family:var(--mono);font-size:10px;color:var(--dim);border:1px solid var(--line2);
+.ver-chip{font-family:var(--mono);font-size:12px;color:var(--dim);border:1px solid var(--line2);
   padding:3px 9px;border-radius:3px;letter-spacing:1px;background:rgba(124,77,255,.06)}
 .ver-chip b{color:#b9a5ff;font-weight:600}
 .state-pill{display:flex;align-items:center;gap:8px;font-size:12px;letter-spacing:1.5px;
@@ -113,7 +113,7 @@ body{
 .p-head{display:flex;align-items:center;gap:9px;padding:12px 16px 10px;border-bottom:1px solid rgba(0,229,255,.08)}
 .p-head .tick{width:3px;height:14px;background:linear-gradient(180deg,var(--cyan),var(--violet));border-radius:2px;box-shadow:0 0 8px var(--cyan-soft)}
 .p-head h2{font-size:12px;font-weight:600;letter-spacing:3px;color:#a9c3e8}
-.p-head .en{font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:2px;margin-left:auto}
+.p-head .en{font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:2px;margin-left:auto}
 .p-body{padding:14px 16px}
 
 /* ============ 反应堆核心 ============ */
@@ -123,20 +123,20 @@ body{
   --rc:#3d5a80; --rc-glow:rgba(61,90,128,.4); transition:filter .5s}
 .reactor .holo-base{position:absolute;left:50%;bottom:8px;width:220px;height:56px;transform:translateX(-50%);
   background:radial-gradient(ellipse at center,var(--rc-glow),transparent 68%);filter:blur(6px);transition:background .6s}
-.ring{position:absolute;border-radius:50%;transform:rotateX(64deg);transform-style:preserve-3d;transition:border-color .5s,box-shadow .5s}
+.ring{position:absolute;border-radius:50%;transform:rotateX(64deg);transform-style:preserve-3d;transition:border-color .5s,box-shadow .5s;z-index:2}
 .ring-a{inset:2px;border:1px dashed var(--rc);animation:spin 26s linear infinite}
 .ring-b{inset:24px;border:2px solid transparent;border-top-color:var(--rc);border-right-color:var(--rc);animation:spinrev 11s linear infinite;opacity:.85}
 .ring-c{inset:46px;border:1px dotted var(--rc);animation:spin 17s linear infinite;opacity:.7}
 .ring-d{inset:64px;border:1px solid transparent;border-bottom-color:var(--rc);border-left-color:var(--rc);animation:spinrev 7s linear infinite;opacity:.6}
 @keyframes spin{to{transform:rotateX(64deg) rotate(360deg)}}
 @keyframes spinrev{to{transform:rotateX(64deg) rotate(-360deg)}}
-.orbit{position:absolute;inset:12px;transform:rotateX(64deg);animation:spin 5.5s linear infinite;pointer-events:none}
+.orbit{position:absolute;inset:12px;transform:rotateX(64deg);animation:spin 5.5s linear infinite;pointer-events:none;z-index:2}
 .orbit i{position:absolute;left:50%;top:-2px;width:5px;height:5px;margin-left:-2px;border-radius:50%;background:var(--rc);box-shadow:0 0 8px var(--rc),0 0 18px var(--rc)}
 .orbit.o2{inset:34px;animation-duration:3.6s;animation-direction:reverse}
 .orbit.o2 i{width:4px;height:4px}
 .core{
   position:absolute;left:50%;top:50%;width:118px;height:118px;transform:translate(-50%,-50%);
-  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;display:flex;align-items:center;justify-content:center;z-index:1;
   background:radial-gradient(circle at 35% 30%,#33415e,#1a2438 45%,#0a1120 78%);
   box-shadow:0 0 24px rgba(0,0,0,.6),inset 0 0 26px rgba(0,0,0,.75),inset 0 2px 6px rgba(255,255,255,.06);
   transition:all .5s var(--ease);
@@ -176,7 +176,7 @@ body{
 .status-big.glow-run{color:#8affd8;text-shadow:0 0 22px rgba(0,255,163,.5)}
 .status-big.glow-st{color:#ffd77a;text-shadow:0 0 22px rgba(255,179,0,.45)}
 .status-big.glow-err{color:#ff9fb0;text-shadow:0 0 22px rgba(255,61,90,.5)}
-.status-sub{font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:2.5px;text-transform:uppercase}
+.status-sub{font-family:var(--mono);font-size:12px;color:var(--dim);letter-spacing:2.5px;text-transform:uppercase}
 .endpoint{
   margin-top:10px;font-family:var(--mono);font-size:12px;color:#7fe6ff;cursor:pointer;
   border:1px solid rgba(0,229,255,.25);padding:6px 14px;border-radius:4px;background:rgba(0,229,255,.05);
@@ -186,7 +186,7 @@ body{
 .meta-row{display:flex;gap:22px;margin-top:12px}
 .meta{text-align:center}
 .meta .v{font-family:var(--mono);font-size:14px;color:#bfefff}
-.meta .k{font-size:10px;color:var(--dim);letter-spacing:2px;margin-top:2px}
+.meta .k{font-size:12px;color:var(--dim);letter-spacing:2px;margin-top:2px}
 .eq{display:flex;align-items:flex-end;gap:3px;height:26px;margin-top:14px}
 .eq i{width:4px;height:4px;background:linear-gradient(180deg,var(--cyan),var(--violet));border-radius:1px;
   animation:eqb 1s ease-in-out infinite;animation-play-state:paused;opacity:.25;transition:opacity .5s}
@@ -200,7 +200,7 @@ body{
 .field-row{display:flex;align-items:center;gap:10px;margin-bottom:12px}
 .field-row:last-child{margin-bottom:0}
 .f-label{flex:none;width:74px;font-size:11px;color:var(--dim);letter-spacing:2px}
-.f-label .en{display:block;font-family:var(--mono);font-size:9px;color:var(--dim2);letter-spacing:1px;margin-top:2px}
+.f-label .en{display:block;font-family:var(--mono);font-size:11px;color:var(--dim2);letter-spacing:1px;margin-top:2px}
 .holo-input{
   flex:1;min-width:0;font-family:var(--mono);font-size:13px;color:#c9ecff;
   background:rgba(3,8,18,.65);border:1px solid var(--line);border-radius:5px;padding:9px 12px;
@@ -222,7 +222,7 @@ body{
 .ibtn.grn{color:#9dffd0;background:rgba(0,255,170,.07);border-color:rgba(0,255,170,.3)}
 .ibtn.grn:hover{background:rgba(0,255,170,.16);box-shadow:0 0 14px rgba(0,255,170,.2)}
 .ibtn.on{color:#8affd8;background:rgba(0,255,163,.09);border-color:rgba(0,255,163,.4)}
-.saved-flag{font-size:10px;color:var(--green);letter-spacing:1px;opacity:0;transition:opacity .3s;flex:none;width:52px;text-align:right}
+.saved-flag{font-size:12px;color:var(--green);letter-spacing:1px;opacity:0;transition:opacity .3s;flex:none;width:52px;text-align:right}
 .saved-flag.show{opacity:1}
 .key-wrap{flex:1;min-width:0;position:relative;display:flex}
 .key-wrap .holo-input{flex:1;padding-right:38px}
@@ -237,18 +237,18 @@ body{
   background:linear-gradient(160deg,rgba(0,229,255,.05),rgba(124,77,255,.04) 60%,transparent);
   overflow:hidden;transition:all .25s}
 .stat-card:hover{transform:translateY(-2px);border-color:rgba(0,229,255,.35);box-shadow:0 6px 18px rgba(0,0,0,.35),0 0 16px rgba(0,229,255,.1)}
-.stat-card .k{font-size:10px;color:var(--dim);letter-spacing:2px}
+.stat-card .k{font-size:12px;color:var(--dim);letter-spacing:2px}
 .stat-card .v{font-family:var(--mono);font-size:24px;font-weight:600;margin-top:3px;color:#c9ecff;text-shadow:0 0 14px rgba(0,229,255,.25);white-space:nowrap}
-.stat-card .u{font-size:9px;color:var(--dim2);font-family:var(--mono);margin-left:4px}
-.stat-card .sub{font-size:9px;color:var(--dim);margin-top:2px;font-family:var(--mono)}
+.stat-card .u{font-size:11px;color:var(--dim2);font-family:var(--mono);margin-left:4px}
+.stat-card .sub{font-size:11px;color:var(--dim);margin-top:2px;font-family:var(--mono)}
 .stat-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:linear-gradient(180deg,var(--cyan),transparent)}
 .stat-card.vio::before{background:linear-gradient(180deg,var(--violet),transparent)}
 .stat-card.grn::before{background:linear-gradient(180deg,var(--green),transparent)}
 /* 模型消耗条 */
 .bars-head{display:flex;align-items:center;margin:14px 0 8px}
-.bars-head .t{font-size:10px;color:var(--dim);letter-spacing:2px}
+.bars-head .t{font-size:12px;color:var(--dim);letter-spacing:2px}
 .bars-wrap{flex:1;overflow-y:auto;min-height:0;padding-right:4px}
-.bar-row{display:grid;grid-template-columns:150px 1fr 120px;gap:10px;align-items:center;margin-bottom:7px;
+.bar-row{display:grid;grid-template-columns:150px 1fr 150px;gap:10px;align-items:center;margin-bottom:7px;
   animation:barin .5s var(--ease) both}
 @keyframes barin{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:none}}
 .bar-row .name{font-family:var(--mono);font-size:10.5px;color:#a9c3e8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -259,8 +259,8 @@ body{
   background:linear-gradient(100deg,transparent 20%,rgba(255,255,255,.35) 50%,transparent 80%);
   background-size:200% 100%;animation:shimmer 2.2s linear infinite}
 @keyframes shimmer{from{background-position:180% 0}to{background-position:-80% 0}}
-.bar-row .val{font-family:var(--mono);font-size:10px;color:var(--dim);text-align:right}
-.bar-row .sub2{display:block;font-size:8px;color:var(--dim);opacity:.7;margin-top:1px;white-space:nowrap}
+.bar-row .val{font-family:var(--mono);font-size:12px;color:var(--dim);text-align:right}
+.bar-row .sub2{display:block;font-size:12px;color:var(--dim);opacity:.7;margin-top:1px;white-space:nowrap}
 .bars-empty{color:var(--dim2);font-size:11px;letter-spacing:1px;padding:14px 4px;font-family:var(--mono)}
 .tel-actions{display:flex;gap:10px;margin-top:12px}
 
@@ -288,7 +288,7 @@ body{
 .console-panel{flex:none;height:172px;margin:0 16px 14px;display:flex;flex-direction:column}
 .console-head{display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid rgba(0,229,255,.08)}
 .console-head h2{font-size:11px;letter-spacing:3px;color:#a9c3e8;font-weight:600}
-.console-head .en{font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:2px}
+.console-head .en{font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:2px}
 .console-actions{margin-left:auto;display:flex;gap:8px}
 .cbtn{font-size:10.5px;letter-spacing:1.5px;color:#9fb6dd;background:rgba(255,255,255,.03);
   border:1px solid rgba(120,150,200,.22);border-radius:4px;padding:5px 11px;cursor:pointer;transition:all .2s}
@@ -372,10 +372,10 @@ body{
 #boot .b-bar i{display:block;height:100%;width:0;border-radius:2px;
   background:linear-gradient(90deg,var(--cyan),var(--violet));box-shadow:0 0 12px var(--cyan);
   transition:width .3s ease}
-#boot .b-skip{font-size:10px;color:var(--dim2);letter-spacing:3px;font-family:var(--mono)}
+#boot .b-skip{font-size:12px;color:var(--dim2);letter-spacing:3px;font-family:var(--mono)}
 
 /* ============ 演示模式徽标 ============ */
-#demoBadge{position:fixed;left:14px;bottom:12px;z-index:60;font-family:var(--mono);font-size:10px;
+#demoBadge{position:fixed;left:14px;bottom:12px;z-index:60;font-family:var(--mono);font-size:12px;
   color:#ffb300;border:1px solid rgba(255,179,0,.4);padding:4px 10px;border-radius:4px;
   background:rgba(30,22,4,.6);letter-spacing:2px;display:none}
 
@@ -505,7 +505,7 @@ body{
           <div class="tel-actions">
             <button class="ibtn" id="refreshStats">↻ 刷新数据</button>
             <button class="ibtn violet" id="openUsage">⌁ 官方用量页</button>
-            <span class="calib-tip" style="font-size:10px;color:#5f7398">点模型条可校准官网 Token</span>
+            <span class="calib-tip" style="font-size:12px;color:#5f7398">点模型条可校准官网 Token</span>
           </div>
         </div>
       </section>
