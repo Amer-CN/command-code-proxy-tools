@@ -8,6 +8,32 @@ import (
 	"github.com/dev2k6/command-code-proxy-server/internal/api"
 )
 
+// estTokens 保守估算 messages 已占用的 token 数（用于上下文感知的 max_tokens 压缩）。
+// 按"字符数/2"估算：中文约 0.7 token/字、代码/英文约 0.25 token/字符，除以 2
+// 在任何场景都不会低估，宁可多压缩一点输出空间，也要保证请求不超模型上下文上限。
+func estTokens(msgs []api.OpenAIMessage) int {
+	n := 0
+	for _, m := range msgs {
+		switch c := m.Content.(type) {
+		case string:
+			n += len(c)
+		case []any:
+			for _, part := range c {
+				if pm, ok := part.(map[string]any); ok {
+					if t, ok := pm["text"].(string); ok {
+						n += len(t)
+					}
+				}
+			}
+		}
+		// tool 调用参数也是上下文的一部分
+		for _, tc := range m.ToolCalls {
+			n += len(tc.Function.Name) + len(tc.Function.Arguments)
+		}
+	}
+	return n/2 + 64 // +64 余量
+}
+
 // Convert OpenAI messages to CommandCode format
 func ConvertMessages(openAIMsgs []api.OpenAIMessage) []api.CCMessage {
 	var ccMsgs []api.CCMessage

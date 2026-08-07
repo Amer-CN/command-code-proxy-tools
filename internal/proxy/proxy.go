@@ -9,6 +9,8 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -112,6 +114,16 @@ func (p *Proxy) BuildRequest(openAIReq api.OpenAIChatRequest) (api.CCRequestBody
 	// CommandCode rejects max_tokens above 200000; clamp to the API limit
 	if maxTokens > 200000 {
 		maxTokens = 200000
+	}
+	// 上下文感知：messages 已占用的 token + 输出预算必须 ≤ 模型 1M 上下文上限。
+	// 超长对话（ZCode/Codex 携带全程历史）messages 可能已接近上限，此时若仍
+	// 按 200000 申请输出，上游会以 "maximum context length" 拒绝整个请求
+	// （表现为"模型未返回任何内容"）。估算偏保守（字符/2），不会低估。
+	if room := ccContextLimit - estTokens(msgs) - len(system)/2; room < maxTokens {
+		maxTokens = room
+		if maxTokens < 1024 {
+			maxTokens = 1024 // 至少留一点输出空间；messages 真超限时由上游报错
+		}
 	}
 
 	tools := ConvertTools(openAIReq.Tools)
@@ -256,7 +268,23 @@ func (p *Proxy) HandleChatCompletions(w http.ResponseWriter, r *http.Request) {
 	created := time.Now().Unix()
 
 	if openAIReq.Stream {
-		p.StreamResponse(w, r, ccResp, requestID, ccBody.Params.Model, created)
+		// 上下文超限自动重试（最多 1 次）：上游给出精确 messages token 数，
+		// 压缩 max_tokens 后重发——estTokens 估算的精确兜底。
+		if msgTokens := p.StreamResponse(w, r, ccResp, requestID, ccBody.Params.Model, created); msgTokens > 0 {
+			ccBody.Params.MaxTokens = ccContextLimit - msgTokens - 16
+			if ccBody.Params.MaxTokens < 1024 {
+				ccBody.Params.MaxTokens = 1024
+			}
+			log.Printf("[RETRY] context overflow retry with max_tokens=%d", ccBody.Params.MaxTokens)
+			if ccReq2, err2 := p.CreateUpstreamRequest(r.Context(), ccBody, apiKey); err2 == nil {
+				if ccResp2, err3 := p.CallUpstream(ccReq2); err3 == nil && ccResp2.StatusCode == http.StatusOK {
+					p.StreamResponse(w, r, ccResp2, requestID, ccBody.Params.Model, created)
+					ccResp2.Body.Close()
+				} else if err3 != nil {
+					log.Printf("[ERROR] context-overflow retry failed: %v", err3)
+				}
+			}
+		}
 	} else {
 		p.NonStreamResponse(w, ccResp, requestID, ccBody.Params.Model, created)
 	}
@@ -294,11 +322,29 @@ func forEachLine(r io.Reader, ctx context.Context, fn func(string) error) error 
 }
 
 // StreamResponse handles streaming response from CommandCode to OpenAI SSE
-func (p *Proxy) StreamResponse(w http.ResponseWriter, r *http.Request, ccResp *http.Response, requestID, model string, created int64) {
+// StreamResponse handles streaming response from CommandCode to OpenAI SSE.
+// 返回 >0 表示上游以 context 超限拒绝（返回值为 messages 已占用的 token 数），
+// 此时尚未写出任何 SSE 数据，调用方可压缩 max_tokens 后安全重发（精确兜底，
+// 覆盖 estTokens 估算偏差的场景）。
+func (p *Proxy) StreamResponse(w http.ResponseWriter, r *http.Request, ccResp *http.Response, requestID, model string, created int64) int {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		p.writeOpenAIError(w, http.StatusInternalServerError, "Streaming not supported", "server_error")
-		return
+		return 0
+	}
+
+	// 先行读取上游第一行：若立即报 context 超限（长对话携带全程历史时常见），
+	// 在写出 SSE 头之前截获，直接返回重试信号。
+	reader := bufio.NewReader(ccResp.Body)
+	firstLine, firstErr := readFirstLine(reader)
+	if firstErr == nil && firstLine != "" {
+		var ev api.CCStreamEvent
+		if json.Unmarshal([]byte(firstLine), &ev) == nil && ev.Type == "error" && ev.Error != nil {
+			if msgTokens := parseContextOverflow(ev.Error.Message); msgTokens > 0 {
+				log.Printf("[RETRY] context overflow: %d tokens in messages, shrinking max_tokens", msgTokens)
+				return msgTokens
+			}
+		}
 	}
 
 	w.Header().Set("Content-Type", "text/event-stream")
@@ -311,7 +357,7 @@ func (p *Proxy) StreamResponse(w http.ResponseWriter, r *http.Request, ccResp *h
 	toolCallIndexes := map[string]int{}
 	var streamIn, streamOut, streamCacheRead, streamCacheWrite int64 // 累计本次流的 token 用量（finish 事件报告）
 
-	lineErr := forEachLine(ccResp.Body, r.Context(), func(line string) error {
+	process := func(line string) error {
 		p.debugf("[DEBUG] CommandCode stream line: %s", truncateLog(line))
 
 		var event api.CCStreamEvent
@@ -475,10 +521,50 @@ func (p *Proxy) StreamResponse(w http.ResponseWriter, r *http.Request, ccResp *h
 			log.Printf("[ERROR] Stream error: %v", event.Error)
 		}
 		return nil
-	})
+	}
+	// 第一行已先行读取，先处理它，剩余行继续（reader 位置已推进）
+	if firstLine != "" {
+		if err := process(firstLine); err != nil {
+			log.Printf("[ERROR] Stream first-line error: %v", err)
+			return 0
+		}
+	}
+	lineErr := forEachLine(reader, r.Context(), process)
 	if lineErr != nil {
 		log.Printf("[ERROR] Stream read error: %v", lineErr)
 	}
+	return 0
+}
+
+// readFirstLine 读取缓冲读取器的一行（不阻塞等待更多数据）。
+func readFirstLine(r *bufio.Reader) (string, error) {
+	lineBytes, err := r.ReadBytes('\n')
+	line := strings.TrimSpace(string(lineBytes))
+	if err != nil && len(line) == 0 {
+		return "", err
+	}
+	return line, nil
+}
+
+// contextOverflowRe 匹配上游 context 超限报错中的 messages token 数。
+var contextOverflowRe = regexp.MustCompile(`requested \d+ tokens \((\d+) in the messages`)
+
+// ccContextLimit 是上游模型的上下文上限（token）：messages + 输出预算不能超过它。
+const ccContextLimit = 1048576
+
+// parseContextOverflow 从上游错误文本提取 messages 已占用的 token 数。
+// 匹配 CommandCode 的报错格式：
+//
+//	"This model's maximum context length is 1048576 tokens. However, you
+//	 requested 1048593 tokens (848593 in the messages, 200000 in the completion)..."
+func parseContextOverflow(errMsg string) int {
+	m := contextOverflowRe.FindStringSubmatch(errMsg)
+	if len(m) == 2 {
+		if n, err := strconv.Atoi(m[1]); err == nil && n > 0 {
+			return n
+		}
+	}
+	return 0
 }
 
 // WriteSSE writes a Server-Sent Event
