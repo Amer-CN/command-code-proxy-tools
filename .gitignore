@@ -30,3 +30,4 @@ CommandCodeProxyDeck-Portable.zip
 *.exe~
 calibration.txt
 calibration.json
+push_api.py
