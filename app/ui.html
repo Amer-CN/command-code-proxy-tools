@@ -232,11 +232,11 @@ body{
 /* 统计卡片 */
 .telemetry{flex:1;display:flex;flex-direction:column;min-height:0}
 .telemetry .p-body{flex:1;display:flex;flex-direction:column;min-height:0}
-.stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.stat-grid{flex:1;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:10px;min-height:0}
 .stat-card{
   position:relative;border:1px solid var(--line);border-radius:8px;padding:10px 12px 9px;
   background:linear-gradient(160deg,rgba(0,229,255,.05),rgba(124,77,255,.04) 60%,transparent);
-  overflow:hidden;transition:all .25s}
+  overflow:hidden;transition:all .25s;display:flex;flex-direction:column;justify-content:center;min-height:0}
 .stat-card:hover{transform:translateY(-2px);border-color:rgba(0,229,255,.35);box-shadow:0 6px 18px rgba(0,0,0,.35),0 0 16px rgba(0,229,255,.1)}
 .stat-card .k{font-size:12px;color:var(--dim);letter-spacing:2px}
 .stat-card .v{font-family:var(--mono);font-size:24px;font-weight:600;margin-top:3px;color:#c9ecff;text-shadow:0 0 14px rgba(0,229,255,.25);white-space:nowrap}
@@ -247,18 +247,18 @@ body{
 .stat-card.grn::before{background:linear-gradient(180deg,var(--green),transparent)}
 /* 模型消耗条 */
 .bars-wrap{flex:1;overflow-y:auto;min-height:0;padding-right:4px}
-.bar-row{display:grid;grid-template-columns:minmax(0,1.6fr) 1.1fr minmax(0,1fr);gap:10px;align-items:center;margin-bottom:7px;
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:7px;
   animation:barin .5s var(--ease) both}
 @keyframes barin{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:none}}
-.bar-row .name{font-family:var(--mono);font-size:12px;color:#c3d8f5;white-space:normal;word-break:break-all;line-height:1.35;min-width:0}
-.bar-track{height:8px;background:rgba(255,255,255,.04);border-radius:4px;overflow:hidden;position:relative}
+.bar-row .name{font-family:var(--mono);font-size:12px;color:#c3d8f5;white-space:nowrap;line-height:1.35;flex:none;max-width:46%}
+.bar-track{flex:1 1 auto;height:8px;background:rgba(255,255,255,.04);border-radius:4px;overflow:hidden;position:relative;min-width:40px}
 .bar-fill{height:100%;border-radius:4px;width:0;position:relative;transition:width .9s var(--ease);
   background:linear-gradient(90deg,var(--cyan),var(--violet));box-shadow:0 0 10px rgba(0,229,255,.35)}
 .bar-fill::after{content:"";position:absolute;inset:0;
   background:linear-gradient(100deg,transparent 20%,rgba(255,255,255,.35) 50%,transparent 80%);
   background-size:200% 100%;animation:shimmer 2.2s linear infinite}
 @keyframes shimmer{from{background-position:180% 0}to{background-position:-80% 0}}
-.bar-row .val{font-family:var(--mono);font-size:12px;color:var(--dim);text-align:right}
+.bar-row .val{font-family:var(--mono);font-size:12px;color:var(--dim);text-align:right;flex:none}
 .bar-row .sub2{display:block;font-size:12px;color:var(--dim);opacity:.7;margin-top:1px;white-space:nowrap}
 .bars-empty{color:var(--dim2);font-size:11px;letter-spacing:1px;padding:14px 4px;font-family:var(--mono)}
 
@@ -328,8 +328,8 @@ body{
 .cbtn:hover{color:#eafcff;border-color:var(--cyan);box-shadow:0 0 12px rgba(0,229,255,.15)}
 .cbtn:active{transform:scale(.94)}
 .cbtn.on{color:#8affd8;border-color:rgba(0,255,163,.5);background:rgba(0,255,163,.06)}
-.log-stream{flex:1;overflow-y:auto;padding:8px 16px 10px;font-family:var(--mono);font-size:12px;line-height:1.85}
-.log-line{animation:login .3s ease-out both;overflow-wrap:anywhere;word-break:normal}
+.log-stream{flex:1;overflow-y:auto;overflow-x:hidden;padding:8px 16px 10px;font-family:var(--mono);font-size:12px;line-height:1.85}
+.log-line{animation:login .3s ease-out both;overflow-wrap:anywhere;word-break:normal;display:flex;align-items:baseline}
 @keyframes login{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:none}}
 .log-line .lt{color:var(--dim2);margin-right:8px;flex:none}
 .log-line .lv{display:inline-block;width:38px;margin-right:8px;font-weight:700;letter-spacing:1px;flex:none}
@@ -338,7 +338,7 @@ body{
 .log-line.err .lv{color:var(--red)}
 .log-line.net .lv{color:var(--violet)}
 .log-line.warn .lv{color:var(--amber)}
-.log-line .lm{color:#c3d4ee;display:inline;overflow-wrap:anywhere}
+.log-line .lm{color:#c3d4ee;display:inline;overflow-wrap:anywhere;flex:1;min-width:0}
 
 /* ============ 杀软提示横幅 ============ */
 .upd-banner{
@@ -429,6 +429,8 @@ body{
   /* 底部双栏保持左右分栏（模型消耗 TOP | 运行日志），窄屏也不上下堆叠 */
   .deck-bottom{grid-template-columns:1fr 1fr}
   .console-panel{height:200px}
+  /* 窄屏下统计卡片回退 2 列，避免 3 列过挤 */
+  .stat-grid{grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(3,1fr)}
 }
 </style>
 </head>
