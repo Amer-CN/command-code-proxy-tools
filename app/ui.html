@@ -328,8 +328,8 @@ body{
 .cbtn:hover{color:#eafcff;border-color:var(--cyan);box-shadow:0 0 12px rgba(0,229,255,.15)}
 .cbtn:active{transform:scale(.94)}
 .cbtn.on{color:#8affd8;border-color:rgba(0,255,163,.5);background:rgba(0,255,163,.06)}
-.log-stream{flex:1;overflow-y:auto;overflow-x:hidden;padding:8px 16px 10px;font-family:var(--mono);font-size:12px;line-height:1.85}
-.log-line{animation:login .3s ease-out both;overflow-wrap:anywhere;word-break:normal;display:flex;align-items:baseline}
+.log-stream{flex:1;overflow:auto;padding:8px 16px 10px;font-family:var(--mono);font-size:12px;line-height:1.85;white-space:nowrap}
+.log-line{animation:login .3s ease-out both;white-space:nowrap;display:flex;align-items:baseline}
 @keyframes login{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:none}}
 .log-line .lt{color:var(--dim2);margin-right:8px;flex:none}
 .log-line .lv{display:inline-block;width:38px;margin-right:8px;font-weight:700;letter-spacing:1px;flex:none}
@@ -338,7 +338,7 @@ body{
 .log-line.err .lv{color:var(--red)}
 .log-line.net .lv{color:var(--violet)}
 .log-line.warn .lv{color:var(--amber)}
-.log-line .lm{color:#c3d4ee;display:inline;overflow-wrap:anywhere;flex:1;min-width:0}
+.log-line .lm{color:#c3d4ee;white-space:nowrap;flex:1;min-width:0}
 
 /* ============ 杀软提示横幅 ============ */
 .upd-banner{
@@ -1143,6 +1143,17 @@ pollState();
 if (!HAS_BRIDGE && qs.get("state")==="running") setTimeout(()=>toggleCore(), 300);
 
 /* ---------------- 版本更新检查 ---------------- */
+// 版本号比较：v2.3.0 > v2.2.0 > v2.1.0。返回 1 / 0 / -1（a 比 b 大 / 等 / 小）。
+function verCmp(a, b){
+  const pa = (a||"").replace(/^v/i,"").split(".").map(n=>parseInt(n,10)||0);
+  const pb = (b||"").replace(/^v/i,"").split(".").map(n=>parseInt(n,10)||0);
+  for (let i=0;i<Math.max(pa.length,pb.length);i++){
+    const x = pa[i]||0, y = pb[i]||0;
+    if (x > y) return 1;
+    if (x < y) return -1;
+  }
+  return 0;
+}
 // 启动后异步查 GitHub 最新 Release（api.github.com；被墙/离线时静默跳过）。
 (async function checkUpdate(){
   if (!HAS_BRIDGE) return;
@@ -1150,7 +1161,8 @@ if (!HAS_BRIDGE && qs.get("state")==="running") setTimeout(()=>toggleCore(), 300
     const r = await call("CheckUpdate");
     if (!r || !r.ok || !r.latest) return;
     const cur = "v2.3.0";
-    if (r.latest === cur) return;
+    // 本地版本不低于远端 → 已是最新，不提示（修复：远端 v2.2.0 < 本地 v2.3.0 也提示的缺陷）
+    if (verCmp(cur, r.latest) >= 0) return;
     $("updVer").textContent = r.latest;
     $("updCur").textContent = cur;
     $("updGo").onclick = (e)=>{ e.preventDefault(); call("Open", r.url); };
