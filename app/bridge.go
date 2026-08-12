@@ -472,8 +472,12 @@ func (a *app) bindAll(w webview.WebView) {
 		}
 		return string(body)
 	})
-	_ = w.Bind("ccModels", func() string {
-		if s, ok := httpGet(a.baseURL() + "/v1/models"); ok {
+	_ = w.Bind("ccModels", func(plan string) string {
+		u := a.baseURL() + "/v1/models"
+		if plan == "go" {
+			u += "?plan=go"
+		}
+		if s, ok := httpGet(u); ok {
 			return s
 		}
 		return `{"ok":false,"msg":"代理未运行或无法连接"}`

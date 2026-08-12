@@ -3,6 +3,21 @@
 给 [command-code-proxy-server](https://github.com/dev2k6/command-code-proxy-server)（原作者 **dev2k6**，本仓库核心代码来自上游）
 做的 Windows 便携工具：本地代理 + 科幻全息控制台 + 一键启停 + 开机自启。
 
+## v2.3.0（2026-08-12）—— 模型目录全量 · 套餐切换 · 费用浮窗 · 性能与可读性
+
+- **模型目录全量 55 个**：`/v1/models` 从写死的 18 个升级为官方完整目录（与 Available Models 一致，按厂商分组）
+  - 新增 Claude 全系（Opus/Sonnet/Haiku/Fable）、GPT-5.3~5.6 全系、Kimi K3/K2.7、GLM-5.2、Qwen 3.8、
+    Muse Spark、Grok 4.5、Laguna S 2.1（免费）、Ling 3.0 Flash（免费）、Fugu、Inkling、Nemotron 等
+- **套餐切换（与官方一致）**：模型矩阵新增「全部 55 / Go 32」切换按钮
+  - `?plan=go` 返回 Go 套餐内的 32 个模型（官方同款）；默认视图为 **Go 32**（当前套餐实际可用）
+- **费用浮窗**：悬停模型名自动弹出官网单价（输入/输出/缓存读/缓存写/上下文窗口），折扣角标（-50%~-99%）与「FREE」标记
+- **短名映射补全**：`MapModel` 覆盖全部 55 个模型的短名→完整 ID（大小写不敏感、忽略分隔符；`opus`→Opus 5、`grok`→Grok 4.5 等）
+- **性能优化**：星空/星云动画在窗口最小化/隐藏时暂停；面板视差与浮窗定位改为 rAF 节流（消除鼠标扫过的卡顿）；
+  星空 canvas 增加 DPI 适配（高分屏更锐利，DPR=1 行为不变）
+- **可读性**：模型矩阵、模型消耗 TOP、运行日志、标签等文字整体放大；模型消耗 TOP 名称不再截断（换行显示 + 悬停看全名）
+- **交互修正**：移除模型矩阵的系统悬停 title（不再遮挡费用浮窗）
+- 新增模型目录 / 套餐过滤 / 短名映射的单元测试（全量 55、Go 32、全模型自映射）
+
 ## v2.2.0（2026-08-07）—— 稳定版 · 图标 · 高分屏 · 自愈 · 更新检查
 
 - **应用图标**：反应堆风格图标（16-256px 多尺寸）嵌入 exe——资源管理器 / 任务栏 / 标题栏均显示
@@ -62,7 +77,7 @@
 2. 在任意 OpenAI 兼容客户端 / Agent 里配置：
    - Base URL: `http://127.0.0.1:55990/v1`
    - API Key: 你自己在 CommandCode Studio 生成的 Key
-3. 可用 18 个模型：DeepSeek V4、Kimi K2.6、GLM-5.1、Qwen 3.7、Gemini 3.1 Flash-Lite、MiniMax、小米 MiMo 等
+3. 可用 32 个 Go 套餐模型（全部 55 个可切换查看）：DeepSeek V4、Kimi K2.x/K3、GLM-5.x、Qwen 3.x、MiniMax、小米 MiMo、GPT-5.6 Luna、Grok 4.5 等
 
 > 代理会把 OpenAI 格式请求转发到 CommandCode 的 `/alpha/generate`（CLI 内部接口），
 > 因此**不需要 Provider 套餐**，普通套餐即可使用。

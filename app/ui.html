@@ -200,10 +200,10 @@ body{
 .mid-col{display:flex;flex-direction:column;gap:14px;min-height:0}
 .field-row{display:flex;align-items:center;gap:10px;margin-bottom:12px}
 .field-row:last-child{margin-bottom:0}
-.f-label{flex:none;width:74px;font-size:11px;color:var(--dim);letter-spacing:2px}
+.f-label{flex:none;width:74px;font-size:12px;color:var(--dim);letter-spacing:2px}
 .f-label .en{display:block;font-family:var(--mono);font-size:11px;color:var(--dim2);letter-spacing:1px;margin-top:2px}
 .holo-input{
-  flex:1;min-width:0;font-family:var(--mono);font-size:13px;color:#c9ecff;
+  flex:1;min-width:0;font-family:var(--mono);font-size:14px;color:#c9ecff;
   background:rgba(3,8,18,.65);border:1px solid var(--line);border-radius:5px;padding:9px 12px;
   outline:none;transition:all .25s;letter-spacing:.4px}
 .holo-input:focus{border-color:var(--cyan);box-shadow:0 0 0 1px rgba(0,229,255,.35),0 0 18px rgba(0,229,255,.12)}
@@ -241,16 +241,16 @@ body{
 .stat-card .k{font-size:12px;color:var(--dim);letter-spacing:2px}
 .stat-card .v{font-family:var(--mono);font-size:24px;font-weight:600;margin-top:3px;color:#c9ecff;text-shadow:0 0 14px rgba(0,229,255,.25);white-space:nowrap}
 .stat-card .u{font-size:11px;color:var(--dim2);font-family:var(--mono);margin-left:4px}
-.stat-card .sub{font-size:11px;color:var(--dim);margin-top:2px;font-family:var(--mono)}
+.stat-card .sub{font-size:12px;color:var(--dim);margin-top:2px;font-family:var(--mono)}
 .stat-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:linear-gradient(180deg,var(--cyan),transparent)}
 .stat-card.vio::before{background:linear-gradient(180deg,var(--violet),transparent)}
 .stat-card.grn::before{background:linear-gradient(180deg,var(--green),transparent)}
 /* 模型消耗条 */
 .bars-wrap{flex:1;overflow-y:auto;min-height:0;padding-right:4px}
-.bar-row{display:grid;grid-template-columns:150px 1fr 150px;gap:10px;align-items:center;margin-bottom:7px;
+.bar-row{display:grid;grid-template-columns:minmax(0,1.6fr) 1.1fr minmax(0,1fr);gap:10px;align-items:center;margin-bottom:7px;
   animation:barin .5s var(--ease) both}
 @keyframes barin{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:none}}
-.bar-row .name{font-family:var(--mono);font-size:10.5px;color:#c3d8f5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-row .name{font-family:var(--mono);font-size:12px;color:#c3d8f5;white-space:normal;word-break:break-all;line-height:1.35;min-width:0}
 .bar-track{height:8px;background:rgba(255,255,255,.04);border-radius:4px;overflow:hidden;position:relative}
 .bar-fill{height:100%;border-radius:4px;width:0;position:relative;transition:width .9s var(--ease);
   background:linear-gradient(90deg,var(--cyan),var(--violet));box-shadow:0 0 10px rgba(0,229,255,.35)}
@@ -266,12 +266,12 @@ body{
 .models-panel{display:flex;flex-direction:column;min-height:0}
 .models-panel .p-body{flex:1;overflow-y:auto;min-height:0;padding:10px 14px}
 .vendor-g{margin-bottom:12px}
-.vendor-h{font-family:var(--mono);font-size:9.5px;letter-spacing:2.5px;color:var(--dim);margin:6px 2px 7px;
+.vendor-h{font-family:var(--mono);font-size:11px;letter-spacing:2.5px;color:var(--dim);margin:6px 2px 7px;
   display:flex;align-items:center;gap:8px}
 .vendor-h::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
 .chips{display:flex;flex-wrap:wrap;gap:7px}
 .chip{
-  font-family:var(--mono);font-size:11px;color:#a8d8f0;cursor:pointer;position:relative;
+  font-family:var(--mono);font-size:12px;color:#a8d8f0;cursor:pointer;position:relative;
   border:1px solid rgba(0,229,255,.2);border-radius:4px;padding:6px 10px;
   background:linear-gradient(160deg,rgba(0,229,255,.05),rgba(124,77,255,.05));
   transition:all .2s var(--ease);animation:chipin .45s var(--ease) both}
@@ -280,7 +280,31 @@ body{
   box-shadow:0 4px 14px rgba(0,0,0,.4),0 0 14px rgba(0,229,255,.25);text-shadow:0 0 8px rgba(0,229,255,.6)}
 .chip:active{transform:translateY(0) scale(.93)}
 .chip.copied{border-color:var(--green);color:#8affd8;box-shadow:0 0 16px rgba(0,255,163,.35)}
-.models-empty{color:var(--dim2);font-size:11px;font-family:var(--mono);padding:16px 4px;letter-spacing:1px;line-height:2}
+.models-empty{color:var(--dim2);font-size:12px;font-family:var(--mono);padding:16px 4px;letter-spacing:1px;line-height:2}
+/* 模型矩阵：套餐切换 */
+.model-filter{display:flex;gap:4px;margin-left:auto}
+.mfilter-btn{
+  font-family:var(--mono);font-size:10px;letter-spacing:1px;cursor:pointer;
+  border:1px solid rgba(0,229,255,.25);border-radius:4px;padding:3px 9px;color:var(--dim);
+  background:rgba(0,229,255,.04);transition:all .2s var(--ease)}
+.mfilter-btn:hover{color:#eafcff;border-color:var(--cyan)}
+.mfilter-btn.active{color:#04121a;background:linear-gradient(160deg,var(--cyan),#4dd8ff);
+  border-color:var(--cyan);box-shadow:0 0 12px rgba(0,229,255,.4);font-weight:600}
+/* 模型费用浮窗 */
+#modelTip{
+  position:fixed;z-index:80;min-width:200px;max-width:280px;pointer-events:none;
+  background:rgba(6,12,24,.96);border:1px solid var(--line);border-radius:8px;
+  box-shadow:0 8px 30px rgba(0,0,0,.6),0 0 20px rgba(0,229,255,.12);
+  padding:10px 12px;font-family:var(--mono);backdrop-filter:blur(6px)}
+.mt-head{font-size:11.5px;color:#cfe8ff;letter-spacing:.5px;margin-bottom:6px;word-break:break-all;
+  display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.mt-deal{font-size:9px;color:#04121a;background:var(--amber);border-radius:3px;padding:1px 5px;font-weight:600}
+.mt-free{font-size:9px;color:#04121a;background:var(--green);border-radius:3px;padding:1px 5px;font-weight:600}
+.mt-free-note{font-size:9.5px;color:var(--green);margin-bottom:5px}
+.mt-tbl{width:100%;border-collapse:collapse;font-size:11px}
+.mt-tbl td{padding:2.5px 0;color:var(--dim)}
+.mt-tbl td:last-child{text-align:right;color:#bff3ff}
+.mt-foot{font-size:9.5px;color:var(--dim2);margin-top:6px;letter-spacing:1px}
 
 /* ============ 底部双栏（模型消耗 TOP | 运行日志） ============ */
 .deck-bottom{flex:none;display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:0 16px 14px;height:170px;min-height:0}
@@ -304,7 +328,7 @@ body{
 .cbtn:hover{color:#eafcff;border-color:var(--cyan);box-shadow:0 0 12px rgba(0,229,255,.15)}
 .cbtn:active{transform:scale(.94)}
 .cbtn.on{color:#8affd8;border-color:rgba(0,255,163,.5);background:rgba(0,255,163,.06)}
-.log-stream{flex:1;overflow-y:auto;padding:8px 16px 10px;font-family:var(--mono);font-size:11px;line-height:1.85}
+.log-stream{flex:1;overflow-y:auto;padding:8px 16px 10px;font-family:var(--mono);font-size:12px;line-height:1.85}
 .log-line{animation:login .3s ease-out both;word-break:break-all}
 @keyframes login{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:none}}
 .log-line .lt{color:var(--dim2);margin-right:8px}
@@ -443,7 +467,7 @@ body{
       <div class="subtitle">代理控制台 · 本地 OpenAI 兼容链路</div>
     </div>
     <div class="spacer"></div>
-    <span class="ver-chip">UI <b>v2.2.0</b></span>
+    <span class="ver-chip">UI <b>v2.3.0</b></span>
     <span class="ver-chip">CORE <b>v1.0.9</b></span>
     <div class="state-pill idle" id="statePill"><span class="pdot"></span><span id="pillText">初始化</span></div>
   </header>
@@ -456,7 +480,7 @@ body{
 
   <!-- 版本更新提示（检查到新 Release 时显示） -->
   <div class="upd-banner" id="updBanner" style="display:none">
-    <span>⚡ 发现新版本 <b id="updVer">—</b>（当前 <b id="updCur">v2.2.0</b>）</span>
+    <span>⚡ 发现新版本 <b id="updVer">—</b>（当前 <b id="updCur">v2.3.0</b>）</span>
     <a id="updGo" href="#">前往下载 →</a>
   </div>
 
@@ -536,7 +560,12 @@ body{
 
     <!-- 模型矩阵 -->
     <section class="panel models-panel tilt">
-      <div class="p-head"><span class="tick"></span><h2>模型矩阵</h2><span class="en" id="modelCount">STANDBY</span></div>
+      <div class="p-head"><span class="tick"></span><h2>模型矩阵</h2><span class="en" id="modelCount">STANDBY</span>
+        <span class="model-filter" id="modelFilterWrap" style="display:none">
+          <button class="mfilter-btn" id="mfAll" onclick="setModelFilter('all')">全部 55</button>
+          <button class="mfilter-btn active" id="mfGo" onclick="setModelFilter('go')">Go 32</button>
+        </span>
+      </div>
       <div class="p-body" id="modelList">
         <div class="models-empty">// 核心点火后自动装载模型矩阵<br>// 点击模型名一键复制</div>
       </div>
@@ -585,7 +614,7 @@ const demo = {
   async getState(){ return { running:demoRunning, external:false,
     phase: demoRunning?"running":"idle", port:"55990", host:"127.0.0.1",
     baseUrl:"http://127.0.0.1:55990/v1", uptime: demoRunning? Math.floor((Date.now()-demoStartAt)/1000):0,
-    autostart:false, apiKey:"", noticeDismissed:false, version:"v2.2.0", core:"v1.0.9", pid:12345 }; },
+    autostart:false, apiKey:"", noticeDismissed:false, version:"v2.3.0", core:"v1.0.9", pid:12345 }; },
   async start(){ demoRunning=true; demoStartAt=Date.now(); return {ok:true,msg:"模拟点火成功"}; },
   async stop(){ demoRunning=false; return {ok:true,msg:"模拟停堆"}; },
   async stats(){ if(!demoRunning) return {ok:false};
@@ -644,7 +673,7 @@ async function copyText(text, label){
 }
 
 /* ---------------- 状态机 ---------------- */
-const S = { phase:"boot", uptime:0, autostart:false, modelsLoaded:false, healFail:0 };
+const S = { phase:"boot", uptime:0, autostart:false, modelsLoaded:false, healFail:0, modelFilter:"go" };
 const PH = {
   idle:     {big:"系统待命",   sub:"CORE STANDBY",            pill:"待命",   pillCls:"idle",     reactor:"",     bigCls:""},
   starting: {big:"点火序列",   sub:"IGNITION SEQUENCE",       pill:"点火中", pillCls:"starting", reactor:"st",   bigCls:"glow-st"},
@@ -798,7 +827,7 @@ function renderBars(sorted){
     const row = document.createElement("div");
     row.className = "bar-row";
     row.style.animationDelay = (i*55)+"ms";
-    row.title = m.sum ? "官网/本地消耗统计" : "";
+    row.title = m.name || ""; // 悬停显示完整模型名（配合名称换行，不会被截断）
     const c = vendorColor(m.name);
     const inT = m.inputTokens || m.in || 0, outT = m.outputTokens || m.out || 0;
     const crT = m.cacheReadTokens || m.cacheRead || 0;
@@ -833,7 +862,8 @@ function renderWindow(vId, capId, subId, w, label){
 
 
 async function loadModels(){
-  const d = await call("Models");
+  const plan = S.modelFilter === "go" ? "go" : "";
+  const d = await call("Models", plan);
   const box = $("modelList");
   const list = d && (d.data || d.models);
   if (!list || !list.length){ box.innerHTML = '<div class="models-empty">// 无法获取模型 · 核心未点火？</div>'; $("modelCount").textContent = "OFFLINE"; return; }
@@ -850,13 +880,28 @@ async function loadModels(){
     groups[v].forEach(id=>{
       const c = document.createElement("span");
       c.className = "chip"; c.style.animationDelay = (i++*28)+"ms";
-      c.textContent = id.split("/").pop(); c.title = id + " · 点击复制";
+      c.textContent = id.split("/").pop(); // 原生 title 已去掉 → 悬停不再弹出系统提示遮挡计费浮窗
       c.onclick = ()=>{ copyText(id); document.querySelectorAll(".chip.copied").forEach(x=>x.classList.remove("copied")); c.classList.add("copied"); };
+      // 悬停 1 秒 → 弹出官网费用浮窗（节流定位，避免每次移动都读布局）
+      c.onmouseenter = (ev)=>{ showModelTip(id, ev); };
+      c.onmouseleave = ()=>{ hideModelTip(); };
       chips.appendChild(c);
     });
     g.appendChild(chips); box.appendChild(g);
   });
-  log("net", "模型矩阵已装载 · " + ids.length + " 个模型在线");
+  log("net", "模型矩阵已装载 · " + ids.length + " 个模型" + (plan ? "（Go 套餐）" : "（全部）"));
+  $("modelFilterWrap").style.display = "";
+  // 浮窗跟随鼠标：容器级 mousemove，节流（仅浮窗可见时工作）
+  box.onmousemove = trackModelTip;
+}
+// 套餐切换：全部 55 / Go 32（与官方目录一致）
+function setModelFilter(mode){
+  if (S.modelFilter === mode) return;
+  S.modelFilter = mode;
+  $("mfAll").classList.toggle("active", mode === "all");
+  $("mfGo").classList.toggle("active", mode === "go");
+  $("modelList").innerHTML = '<div class="models-empty">// 切换中…</div>';
+  loadModels();
 }
 
 /* ---------------- 状态轮询 ---------------- */
@@ -970,54 +1015,77 @@ function openModal(html){
 $("helpBtn").onclick = ()=>openModal(HELP_HTML);
 $("modelRefBtn").onclick = ()=>openModal(REF_HTML);
 
-/* ---------------- 星空背景 ---------------- */
+/* ---------------- 星空背景（节能版） ---------------- */
 (function stars(){
   const cv = $("stars"), cx = cv.getContext("2d");
-  let W, H, layers = [], meteors = [];
-  function resize(){ W = cv.width = innerWidth; H = cv.height = innerHeight;
+  let W, H, layers = [], meteors = [], rafId = 0, paused = false;
+  function resize(){ const dpr = devicePixelRatio || 1;
+    W = innerWidth; H = innerHeight; // 逻辑坐标（CSS 像素），绘制代码无需改动
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    cv.style.width = W + "px"; cv.style.height = H + "px";
+    cx.setTransform(dpr, 0, 0, dpr, 0, 0); // 逻辑坐标 → 物理像素，高清屏星星更锐利
     layers = [0,1].map(l=>({ sp:(l+1)*0.08, pts:Array.from({length: l?60:110}, ()=>({
       x:Math.random()*W, y:Math.random()*H, r:Math.random()*(l?1.6:1)+0.3, tw:Math.random()*6.28 })) }));
   }
   resize(); addEventListener("resize", resize);
   setInterval(()=>{ if (Math.random()<.5) meteors.push({x:Math.random()*W*.8+W*.1, y:-20, vx:-(2+Math.random()*3), vy:2+Math.random()*2, life:1}); }, 7000);
-  (function frame(){
-    cx.clearRect(0,0,W,H);
-    layers.forEach(L=>L.pts.forEach(p=>{
-      p.y += L.sp; p.tw += .03; if (p.y>H){ p.y=-2; p.x=Math.random()*W; }
-      cx.globalAlpha = .35 + Math.sin(p.tw)*.25;
-      cx.fillStyle = "#bfe9ff"; cx.beginPath(); cx.arc(p.x,p.y,p.r,0,6.28); cx.fill();
-    }));
-    cx.globalAlpha = 1;
-    meteors = meteors.filter(m=>m.life>0);
-    meteors.forEach(m=>{
-      m.x+=m.vx; m.y+=m.vy; m.life-=.012;
-      const g = cx.createLinearGradient(m.x,m.y,m.x-m.vx*14,m.y-m.vy*14);
-      g.addColorStop(0,`rgba(140,240,255,${m.life*.9})`); g.addColorStop(1,"transparent");
-      cx.strokeStyle=g; cx.lineWidth=1.6; cx.beginPath(); cx.moveTo(m.x,m.y); cx.lineTo(m.x-m.vx*14,m.y-m.vy*14); cx.stroke();
-    });
-    requestAnimationFrame(frame);
-  })();
+  function frame(){
+    if (!paused){
+      cx.clearRect(0,0,W,H);
+      layers.forEach(L=>L.pts.forEach(p=>{
+        p.y += L.sp; p.tw += .03; if (p.y>H){ p.y=-2; p.x=Math.random()*W; }
+        cx.globalAlpha = .35 + Math.sin(p.tw)*.25;
+        cx.fillStyle = "#bfe9ff"; cx.beginPath(); cx.arc(p.x,p.y,p.r,0,6.28); cx.fill();
+      }));
+      cx.globalAlpha = 1;
+      meteors = meteors.filter(m=>m.life>0);
+      meteors.forEach(m=>{
+        m.x+=m.vx; m.y+=m.vy; m.life-=.012;
+        const g = cx.createLinearGradient(m.x,m.y,m.x-m.vx*14,m.y-m.vy*14);
+        g.addColorStop(0,`rgba(140,240,255,${m.life*.9})`); g.addColorStop(1,"transparent");
+        cx.strokeStyle=g; cx.lineWidth=1.6; cx.beginPath(); cx.moveTo(m.x,m.y); cx.lineTo(m.x-m.vx*14,m.y-m.vy*14); cx.stroke();
+      });
+    }
+    rafId = requestAnimationFrame(frame);
+  }
+  // 节能：页面隐藏/最小化时暂停动画（不再持续占 CPU）
+  document.addEventListener("visibilitychange", ()=>{
+    paused = document.hidden;
+  });
+  rafId = requestAnimationFrame(frame);
 })();
 
-/* ---------------- 3D 视差 ---------------- */
+/* ---------------- 3D 视差（节能版） ---------------- */
 /* 注意：面板只能用 2D 位移做视差——rotateX/Y 3D 变换会让文字被 GPU 透视
    重采样，在 WebView2 上明显发虚（用户反馈的"界面朦胧"就是它）。 */
 (function parallax(){
-  let tx=0, ty=0, cx2=0, cy2=0;
+  let tx=0, ty=0, cx2=0, cy2=0, paused = false;
   addEventListener("mousemove", e=>{ tx=(e.clientX/innerWidth-.5); ty=(e.clientY/innerHeight-.5); });
   (function loop(){
-    cx2 += (tx-cx2)*.06; cy2 += (ty-cy2)*.06;
-    document.querySelectorAll(".nebula.n1").forEach(e=>e.style.marginLeft = cx2*-34+"px");
-    document.querySelectorAll(".nebula.n2").forEach(e=>e.style.marginLeft = cx2*26+"px");
+    if (!paused){
+      cx2 += (tx-cx2)*.06; cy2 += (ty-cy2)*.06;
+      document.querySelectorAll(".nebula.n1").forEach(e=>e.style.marginLeft = cx2*-34+"px");
+      document.querySelectorAll(".nebula.n2").forEach(e=>e.style.marginLeft = cx2*26+"px");
+    }
     requestAnimationFrame(loop);
   })();
-  document.querySelectorAll(".tilt").forEach(p=>{
+  document.addEventListener("visibilitychange", ()=>{ paused = document.hidden; });
+  // 面板视差：节流到 ~30fps，避免每次 mousemove 都读布局
+  const tiltPanels = document.querySelectorAll(".tilt");
+  let tiltRaf = 0, tiltArmed = false;
+  tiltPanels.forEach(p=>{
     p.addEventListener("mousemove", e=>{
-      const r = p.getBoundingClientRect();
-      const dx = ((e.clientX-r.left)/r.width-.5)*7, dy = ((e.clientY-r.top)/r.height-.5)*7;
-      p.style.transform = `translate(${dx}px, ${dy}px)`;
+      if (tiltArmed) return; // 上一帧还没画完，跳过
+      tiltArmed = true;
+      tiltRaf = requestAnimationFrame(()=>{
+        tiltArmed = false;
+        if (document.hidden) return;
+        const r = p.getBoundingClientRect();
+        const dx = ((e.clientX-r.left)/r.width-.5)*7, dy = ((e.clientY-r.top)/r.height-.5)*7;
+        p.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
+      });
     });
-    p.addEventListener("mouseleave", ()=>{ p.style.transform = ""; });
+    p.addEventListener("mouseleave", ()=>{ if (tiltRaf) cancelAnimationFrame(tiltRaf); tiltArmed = false; p.style.transform = ""; });
   });
 })();
 
@@ -1030,7 +1098,7 @@ $("modelRefBtn").onclick = ()=>openModal(REF_HTML);
 /* ---------------- 启动画面 ---------------- */
 (function boot(){
   const lines = [
-    ["COMMANDCODE PROXY DECK v2.2.0", 0],
+    ["COMMANDCODE PROXY DECK v2.3.0", 0],
     ["初始化神经链路 ......... <span class='ok'>OK</span>", 260],
     ["装载代理核心 v1.0.9 .... <span class='ok'>OK</span>", 300],
     ["装载全息界面 ........... <span class='ok'>OK</span>", 300],
@@ -1062,7 +1130,7 @@ if (!HAS_BRIDGE && qs.get("state")==="running") setTimeout(()=>toggleCore(), 300
   try {
     const r = await call("CheckUpdate");
     if (!r || !r.ok || !r.latest) return;
-    const cur = "v2.2.0";
+    const cur = "v2.3.0";
     if (r.latest === cur) return;
     $("updVer").textContent = r.latest;
     $("updCur").textContent = cur;
@@ -1071,6 +1139,111 @@ if (!HAS_BRIDGE && qs.get("state")==="running") setTimeout(()=>toggleCore(), 300
     log("ok", "检测到新版本 " + r.latest + "（当前 " + cur + "）→ 可在顶部横幅前往下载");
   } catch(e){ /* 静默 */ }
 })();
+/* ---------------- 悬停模型浮窗：官网费用详情 ---------------- */
+const PRICING = {
+  // 每百万 token 价格（$），来自 https://commandcode.ai/docs/resources/pricing-limits
+  "Qwen/Qwen3.8-Max":             {in:2.00, out:6.00, cacheR:0.25, cacheW:2.50, ctx:"1M"},
+  "Qwen/Qwen3.7-Max":             {in:2.50, out:7.50, cacheR:0.50, cacheW:3.13, ctx:"1M"},
+  "Qwen/Qwen3.7-Plus":            {in:0.40, out:1.60, cacheR:0.08, cacheW:0.50, ctx:"1M"},
+  "Qwen/Qwen3.7-Flash":           {in:0.03, out:0.13, cacheR:0.006, cacheW:0.038, ctx:"1M"},
+  "Qwen/Qwen3.6-Max-Preview":     {in:1.30, out:7.80, cacheR:0.26, cacheW:1.63, ctx:"—"},
+  "Qwen/Qwen3.6-Plus":            {in:0.50, out:3.00, cacheR:0.10, cacheW:0, ctx:"—"},
+  "claude-fable-5":               {in:10.00, out:50.00, cacheR:1.00, cacheW:12.50, ctx:"1M"},
+  "claude-opus-5":                {in:5.00, out:25.00, cacheR:0.50, cacheW:6.25, ctx:"1M"},
+  "claude-opus-4-8":              {in:5.00, out:25.00, cacheR:0.50, cacheW:6.25, ctx:"1M"},
+  "claude-opus-4-7":              {in:5.00, out:25.00, cacheR:0.50, cacheW:6.25, ctx:"1M"},
+  "claude-opus-4-6":              {in:5.00, out:25.00, cacheR:0.50, cacheW:6.25, ctx:"1M"},
+  "claude-sonnet-5":              {in:2.00, out:10.00, cacheR:0.20, cacheW:2.50, ctx:"1M"},
+  "claude-sonnet-4-6":            {in:3.00, out:15.00, cacheR:0.30, cacheW:3.75, ctx:"1M"},
+  "claude-sonnet-4-5":            {in:3.00, out:15.00, cacheR:0.30, cacheW:3.75, ctx:"1M"},
+  "claude-haiku-4-5":             {in:1.00, out:5.00, cacheR:0.10, cacheW:1.25, ctx:"200K"},
+  "deepseek/deepseek-v4-pro":     {in:1.74, out:3.48, cacheR:0.0145, cacheW:0, ctx:"1M", deal:"-75%"},
+  "deepseek/deepseek-v4-flash":   {in:0.14, out:0.28, cacheR:0.0028, cacheW:0, ctx:"1M"},
+  "google/gemini-3.6-flash":      {in:1.50, out:7.50, cacheR:0.15, cacheW:0, ctx:"1M"},
+  "google/gemini-3.5-flash":      {in:1.50, out:9.00, cacheR:0.15, cacheW:0, ctx:"1M"},
+  "google/gemini-3.5-flash-lite": {in:0.30, out:2.50, cacheR:0.03, cacheW:0, ctx:"1M"},
+  "google/gemini-3.1-flash-lite": {in:0.25, out:1.50, cacheR:0.03, cacheW:0, ctx:"1M"},
+  "inclusionai/ling-3.0-flash-free": {in:0, out:0, cacheR:0, cacheW:0, ctx:"256K", free:true},
+  "meta/muse-spark-1.2":          {in:1.25, out:4.25, cacheR:0.15, cacheW:0, ctx:"1M"},
+  "meta/muse-spark-1.1":          {in:1.25, out:4.25, cacheR:0.15, cacheW:0, ctx:"1M"},
+  "meta/muse-spark-1.2-contributor": {in:0.10, out:0.20, cacheR:0.002, cacheW:0, ctx:"1M"},
+  "MiniMaxAI/MiniMax-M3":         {in:0.60, out:2.40, cacheR:0.12, cacheW:0, ctx:"1M", deal:"-50%"},
+  "MiniMaxAI/MiniMax-M2.7":       {in:0.30, out:1.20, cacheR:0.06, cacheW:0, ctx:"—"},
+  "MiniMaxAI/MiniMax-M2.5":       {in:0.30, out:1.20, cacheR:0.03, cacheW:0, ctx:"200K"},
+  "moonshotai/Kimi-K3":           {in:3.00, out:15.00, cacheR:0.30, cacheW:0, ctx:"1M"},
+  "moonshotai/Kimi-K2.7-Code":    {in:0.95, out:4.00, cacheR:0.19, cacheW:0, ctx:"256K"},
+  "moonshotai/Kimi-K2.7-Code-Highspeed": {in:1.90, out:8.00, cacheR:0.38, cacheW:0, ctx:"262K"},
+  "moonshotai/Kimi-K2.6":         {in:0.95, out:4.00, cacheR:0.16, cacheW:0, ctx:"256K"},
+  "moonshotai/Kimi-K2.5":         {in:0.60, out:3.00, cacheR:0.10, cacheW:0, ctx:"256K"},
+  "nvidia/nemotron-3-ultra-550b-a55b": {in:0.60, out:2.40, cacheR:0.12, cacheW:0, ctx:"1M"},
+  "gpt-5.6-sol":                  {in:5.00, out:30.00, cacheR:0.50, cacheW:6.25, ctx:"1.1M"},
+  "gpt-5.6-terra":                {in:2.00, out:12.00, cacheR:0.20, cacheW:1.25, ctx:"1.1M", deal:"-50%"},
+  "gpt-5.6-luna":                 {in:0.20, out:1.20, cacheR:0.02, cacheW:0.125, ctx:"1.1M", deal:"-50%"},
+  "gpt-5.5":                      {in:5.00, out:30.00, cacheR:0.50, cacheW:0, ctx:"—"},
+  "gpt-5.4":                      {in:2.50, out:15.00, cacheR:0.25, cacheW:0, ctx:"400K"},
+  "gpt-5.4-mini":                 {in:0.75, out:4.50, cacheR:0.075, cacheW:0, ctx:"400K"},
+  "gpt-5.3-codex":                {in:2.00, out:8.00, cacheR:0.50, cacheW:0, ctx:"400K"},
+  "poolside/laguna-s-2.1-free":   {in:0, out:0, cacheR:0, cacheW:0, ctx:"256K", free:true},
+  "sakana/fugu-ultra":            {in:5.00, out:30.00, cacheR:0.50, cacheW:0, ctx:"1M"},
+  "stepfun/Step-3.7-Flash":       {in:0.20, out:1.15, cacheR:0.04, cacheW:0, ctx:"256K"},
+  "stepfun/Step-3.5-Flash":       {in:0.10, out:0.30, cacheR:0.02, cacheW:0, ctx:"1M"},
+  "tencent/hy3-paid":             {in:0.14, out:0.58, cacheR:0.035, cacheW:0, ctx:"262K"},
+  "thinkingmachines/inkling":     {in:1.00, out:4.05, cacheR:0.17, cacheW:0, ctx:"256K"},
+  "thinkingmachines/inkling-small": {in:0.50, out:1.20, cacheR:0.10, cacheW:0, ctx:"1M"},
+  "xai/grok-4.5":                 {in:2.00, out:6.00, cacheR:0.50, cacheW:0, ctx:"500K"},
+  "xiaomi/mimo-v2.5-pro":         {in:2.00, out:6.00, cacheR:0.40, cacheW:0, ctx:"1M", deal:"-99%"},
+  "xiaomi/mimo-v2.5":             {in:0.80, out:4.00, cacheR:0.16, cacheW:0, ctx:"1M", deal:"-98%"},
+  "zai-org/GLM-5.2":              {in:1.40, out:4.40, cacheR:0.26, cacheW:0, ctx:"1M"},
+  "zai-org/GLM-5.2-Fast":         {in:3.00, out:10.25, cacheR:0.50, cacheW:0, ctx:"1M"},
+  "zai-org/GLM-5.1":              {in:1.40, out:4.40, cacheR:0.26, cacheW:0, ctx:"—"},
+  "zai-org/GLM-5":                {in:1.00, out:3.20, cacheR:0.20, cacheW:0, ctx:"200K"},
+};
+let modelTipTimer = null;
+function showModelTip(id, ev){
+  clearTimeout(modelTipTimer);
+  modelTipTimer = setTimeout(()=>{
+    const p = PRICING[id];
+    if (!p) return;
+    const el = $("modelTip");
+    const rows = [["输入", "$" + p.in + " / 1M"], ["输出", "$" + p.out + " / 1M"]];
+    if (p.cacheR) rows.push(["缓存读", "$" + p.cacheR + " / 1M"]);
+    if (p.cacheW) rows.push(["缓存写", "$" + p.cacheW + " / 1M"]);
+    if (p.ctx && p.ctx !== "—") rows.push(["上下文", p.ctx]);
+    let html = `<div class="mt-head">${id}${p.deal?`<span class="mt-deal">${p.deal}</span>`:""}${p.free?`<span class="mt-free">FREE</span>`:""}</div>`;
+    if (p.free) html += `<div class="mt-free-note">免费 · 不消耗额度</div>`;
+    html += `<table class="mt-tbl">`;
+    rows.forEach(r=>{ html += `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`; });
+    html += `</table><div class="mt-foot">官网单价 · 每百万 token · USD</div>`;
+    el.innerHTML = html;
+    el.style.display = "block";
+    positionModelTip(el, ev);
+  }, 1000);
+}
+// 浮窗定位：仅显示时调用一次；鼠标移动时由 rAF 节流更新（不阻塞主线程）
+let tipRaf = 0;
+function positionModelTip(el, ev){
+  if (!el) el = $("modelTip");
+  const r = el.getBoundingClientRect();
+  let x = ev.clientX + 14, y = ev.clientY + 14;
+  if (x + r.width > innerWidth - 8) x = ev.clientX - r.width - 14;
+  if (y + r.height > innerHeight - 8) y = ev.clientY - r.height - 14;
+  el.style.left = x + "px"; el.style.top = y + "px";
+}
+function trackModelTip(ev){
+  const el = $("modelTip");
+  if (!el || el.style.display !== "block") return;
+  if (tipRaf) return; // 上一帧未画完，跳过
+  tipRaf = requestAnimationFrame(()=>{
+    tipRaf = 0;
+    positionModelTip(el, ev);
+  });
+}
+function hideModelTip(){
+  clearTimeout(modelTipTimer);
+  const el = $("modelTip");
+  if (el) el.style.display = "none";
+}
 </script>
+<div id="modelTip" style="display:none"></div>
 </body>
 </html>
