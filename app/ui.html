@@ -247,11 +247,11 @@ body{
 .stat-card.grn::before{background:linear-gradient(180deg,var(--green),transparent)}
 /* 模型消耗条 */
 .bars-wrap{flex:1;overflow-y:auto;min-height:0;padding-right:4px}
-.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:7px;
+.bar-row{display:grid;grid-template-columns:max-content minmax(80px,1fr) max-content;gap:10px;align-items:center;margin-bottom:7px;
   animation:barin .5s var(--ease) both}
 @keyframes barin{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:none}}
-.bar-row .name{font-family:var(--mono);font-size:12px;color:#c3d8f5;white-space:nowrap;line-height:1.35;flex:none;max-width:46%}
-.bar-track{flex:1 1 auto;height:8px;background:rgba(255,255,255,.04);border-radius:4px;overflow:hidden;position:relative;min-width:40px}
+.bar-row .name{font-family:var(--mono);font-size:12px;color:#c3d8f5;white-space:nowrap;line-height:1.35;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.bar-track{height:8px;background:rgba(255,255,255,.04);border-radius:4px;overflow:hidden;position:relative;min-width:80px}
 .bar-fill{height:100%;border-radius:4px;width:0;position:relative;transition:width .9s var(--ease);
   background:linear-gradient(90deg,var(--cyan),var(--violet));box-shadow:0 0 10px rgba(0,229,255,.35)}
 .bar-fill::after{content:"";position:absolute;inset:0;
