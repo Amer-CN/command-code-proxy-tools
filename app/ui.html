@@ -329,16 +329,16 @@ body{
 .cbtn:active{transform:scale(.94)}
 .cbtn.on{color:#8affd8;border-color:rgba(0,255,163,.5);background:rgba(0,255,163,.06)}
 .log-stream{flex:1;overflow-y:auto;padding:8px 16px 10px;font-family:var(--mono);font-size:12px;line-height:1.85}
-.log-line{animation:login .3s ease-out both;word-break:break-all}
+.log-line{animation:login .3s ease-out both;overflow-wrap:anywhere;word-break:normal}
 @keyframes login{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:none}}
-.log-line .lt{color:var(--dim2);margin-right:8px}
-.log-line .lv{display:inline-block;width:38px;margin-right:8px;font-weight:700;letter-spacing:1px}
+.log-line .lt{color:var(--dim2);margin-right:8px;flex:none}
+.log-line .lv{display:inline-block;width:38px;margin-right:8px;font-weight:700;letter-spacing:1px;flex:none}
 .log-line.sys .lv{color:var(--cyan)}
 .log-line.ok .lv{color:var(--green)}
 .log-line.err .lv{color:var(--red)}
 .log-line.net .lv{color:var(--violet)}
 .log-line.warn .lv{color:var(--amber)}
-.log-line .lm{color:#c3d4ee}
+.log-line .lm{color:#c3d4ee;display:inline;overflow-wrap:anywhere}
 
 /* ============ 杀软提示横幅 ============ */
 .upd-banner{
@@ -673,7 +673,7 @@ async function copyText(text, label){
 }
 
 /* ---------------- 状态机 ---------------- */
-const S = { phase:"boot", uptime:0, autostart:false, modelsLoaded:false, healFail:0, modelFilter:"go" };
+const S = { phase:"boot", uptime:0, autostart:false, modelsLoaded:false, healFail:0, modelFilter:"go", viewModelIds:[] };
 const PH = {
   idle:     {big:"系统待命",   sub:"CORE STANDBY",            pill:"待命",   pillCls:"idle",     reactor:"",     bigCls:""},
   starting: {big:"点火序列",   sub:"IGNITION SEQUENCE",       pill:"点火中", pillCls:"starting", reactor:"st",   bigCls:"glow-st"},
@@ -724,7 +724,7 @@ async function toggleCore(){
       else { toast("ok","核心在线", $("baseUrl").value); }
       if (key){ log("ok", "Key 已随点火保存"); }
       S.modelsLoaded = false;
-      loadModels(); refreshStats();
+      await loadModels(); refreshStats();
     } else {
       setPhase("error");
       log("err", "点火失败: " + (r.msg || "未知错误"));
@@ -818,12 +818,19 @@ async function refreshStats(){
 }
 
 // 渲染模型消耗条（数据来自官网明细或本地兜底）。
+// 显示当前视图（Go 32 / 全部 55）所有模型；未使用过的显示 0，进度条对数缩放避免被最大值压扁。
 function renderBars(sorted){
   const wrap = $("barsWrap");
-  const sorted9 = sorted.sort((a,b)=>b.sum-a.sum).slice(0,9);
-  const max = sorted9[0].sum || 1;
+  const byId = {};
+  sorted.forEach(m=>{ byId[m.name || m.id] = m; });
+  // 合并当前视图全部模型：已用的有数据，未用的补 0
+  const all = (S.viewModelIds && S.viewModelIds.length)
+    ? S.viewModelIds.map(id=>({name:id, ...(byId[id]||{}), sum:(byId[id]&&(byId[id].sum||0))||0}))
+    : sorted;
+  const list = all.slice().sort((a,b)=>b.sum-a.sum);
+  const max = list[0].sum || 1;
   wrap.innerHTML = "";
-  sorted9.forEach((m,i)=>{
+  list.forEach((m,i)=>{
     const row = document.createElement("div");
     row.className = "bar-row";
     row.style.animationDelay = (i*55)+"ms";
@@ -832,12 +839,20 @@ function renderBars(sorted){
     const inT = m.inputTokens || m.in || 0, outT = m.outputTokens || m.out || 0;
     const crT = m.cacheReadTokens || m.cacheRead || 0;
     const crPct = crT ? ` · ⚡缓存${fmt(crT)}` : "";
+    // 对数缩放：低用量模型也能看到条，不被最大值压扁（0 时显示 1% 底线）
+    let w = 0;
+    if (m.sum > 0){
+      w = (Math.log10(m.sum+1) / Math.log10(max+1)) * 100;
+      w = Math.max(4, Math.min(100, w));
+    }
     row.innerHTML = `<span class="name"></span>
-      <div class="bar-track"><div class="bar-fill" style="background:linear-gradient(90deg,${c},${c}88);box-shadow:0 0 10px ${c}55"></div></div>
-      <span class="val">${fmt(m.sum)}<em class="sub2">↑${fmt(inT)} / ↓${fmt(outT)}${crPct}</em></span>`;
+      <div class="bar-track"><div class="bar-fill" style="width:0;background:linear-gradient(90deg,${c},${c}88);box-shadow:0 0 10px ${c}55"></div></div>
+      <span class="val">${m.sum ? fmt(m.sum) : "—"}<em class="sub2">${m.sum ? "↑"+fmt(inT)+" / ↓"+fmt(outT)+crPct : "未使用"}</em></span>`;
     row.querySelector(".name").textContent = m.name;
     wrap.appendChild(row);
-    requestAnimationFrame(()=>requestAnimationFrame(()=>{ row.querySelector(".bar-fill").style.width = Math.max(3, m.sum/max*100) + "%"; }));
+    if (m.sum > 0){
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{ row.querySelector(".bar-fill").style.width = w + "%"; }));
+    }
   });
 }
 
@@ -868,6 +883,8 @@ async function loadModels(){
   const list = d && (d.data || d.models);
   if (!list || !list.length){ box.innerHTML = '<div class="models-empty">// 无法获取模型 · 核心未点火？</div>'; $("modelCount").textContent = "OFFLINE"; return; }
   const ids = list.map(m => typeof m === "string" ? m : m.id);
+  // 记住当前视图的模型 ID，供「模型消耗 TOP」渲染全部模型（含未使用）
+  S.viewModelIds = ids.slice();
   $("modelCount").textContent = ids.length + " MODELS";
   const groups = {};
   ids.forEach(id => { const v = vendorOf(id); (groups[v] = groups[v]||[]).push(id); });
@@ -922,10 +939,10 @@ async function pollState(){
     if (S.phase === "starting" && st.phase === "idle") { /* 点火失败已由 start 处理 */ }
     setPhase(st.phase);
   }
-  // 识别到后台代理在运行（GUI 打开时）→ 加载模型与统计
+  // 识别到后台代理在运行（GUI 打开时）→ 先加载模型目录（供 TOP 显示全部模型），再刷新统计
   if (st.running && !S.modelsLoaded){
     S.modelsLoaded = true;
-    loadModels(); refreshStats();
+    await loadModels(); refreshStats();
   }
   if (st.autostart !== S.autostart){ S.autostart = st.autostart; renderAutostart(); }
   if (st.apiKey && !$("apiKey").dataset.touched && !$("apiKey").value){ $("apiKey").value = st.apiKey; }
