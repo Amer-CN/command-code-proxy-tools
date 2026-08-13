@@ -3,7 +3,18 @@
 给 [command-code-proxy-server](https://github.com/dev2k6/command-code-proxy-server)（原作者 **dev2k6**，本仓库核心代码来自上游）
 做的 Windows 便携工具：本地代理 + 科幻全息控制台 + 一键启停 + 开机自启。
 
-## v2.3.2（2026-08-13）—— 思考内容透传（DeepSeek 方言 reasoning_content）
+## v2.4.0（2026-08-13）—— 开发者模式 · 插件托管
+
+- **开发者模式（隐藏入口）**：UI 版本号连点 5 次弹出密码验证，解锁后出现「开发者面板」
+  （密码哈希校验、本机记住解锁状态、支持修改密码；未解锁时界面无任何痕迹）
+- **插件托管**：开发者面板内置两个 Python 服务的统一管理（启动/停止/状态/健康/地址/日志）：
+  - 团结 Cowork（Codely）：`tuanjie2api`（:8788，OpenAI 兼容）
+  - WorkBuddy / CodeBuddy（腾讯）：`codebuddy2api`（:8787，OpenAI/Anthropic/Responses）
+- 插件随发布包附带（`plugins/` 目录，保留原作者项目与 LICENSE）；依赖本机 Python 3.8+ 与
+  fastapi/uvicorn/httpx（面板自动检测并提示安装命令）
+- 说明：插件为独立 Python 服务，由工具托管常驻；后续将逐步以 Go 原生重写替换
+
+## v2.3.2（2026-08-13）—— 思考内容透传（DeepSeek 方言 reasoning_content）（2026-08-13）—— 思考内容透传（DeepSeek 方言 reasoning_content）
 
 - **推理过程透传**：上游 CommandCode 一直通过 `reasoning-delta` 事件返回思考内容，
   但此前代理未解析该事件类型，思考过程被静默丢弃（只保留最终答案）。现完整透传：

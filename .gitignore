@@ -31,3 +31,9 @@ CommandCodeProxyDeck-Portable.zip
 calibration.txt
 calibration.json
 push_api.py
+
+# Developer mode
+dev_secret.json
+plugins/*.log
+plugins/*/__pycache__/
+app.exe

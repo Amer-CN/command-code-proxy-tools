@@ -363,6 +363,24 @@ body{
 .log-line .lm{color:#c3d4ee;white-space:nowrap;flex:1;min-width:0}
 
 /* ============ 杀软提示横幅 ============ */
+/* ============ 开发者模式面板 ============ */
+.dev-panel{margin:14px 16px 0;flex:none}
+.dev-panel .dev-body{display:flex;flex-direction:column;gap:10px;padding:12px 16px}
+.dev-empty{color:var(--dim2);font-size:12px;font-family:var(--mono);padding:8px 2px}
+.dev-card{border:1px solid var(--line2);border-radius:8px;padding:10px 14px;
+  background:linear-gradient(160deg,rgba(124,77,255,.06),rgba(0,229,255,.03))}
+.dev-card .dc-head{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.dev-card .dc-name{font-size:13px;color:#c9ecff;font-weight:600;letter-spacing:.5px}
+.dev-card .dc-url{font-family:var(--mono);font-size:12px;color:var(--dim);cursor:pointer}
+.dev-card .dc-url:hover{color:var(--cyan)}
+.dev-card .dc-actions{margin-left:auto;display:flex;gap:8px;align-items:center}
+.dev-card .dc-actions .cbtn{padding:4px 10px}
+.dev-card .dc-meta{display:flex;gap:14px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:var(--dim);margin-top:4px}
+.dev-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
+.dev-dot.gray{background:#3b4a6b}.dev-dot.green{background:var(--green);box-shadow:0 0 8px var(--green)}
+.dev-dot.red{background:var(--red);box-shadow:0 0 8px var(--red)}
+.dev-card .st-txt{font-size:11px;color:var(--dim);font-family:var(--mono)}
+
 .upd-banner{
   flex:none;margin:8px 16px 0;padding:9px 16px;border-radius:8px;font-size:12.5px;letter-spacing:.5px;
   color:#9dffd0;border:1px solid rgba(0,255,170,.4);display:flex;align-items:center;gap:10px;
@@ -493,7 +511,7 @@ body{
     </div>
     <div class="spacer"></div>
     <span class="ver-chip" id="dlChip" style="display:none" title="累计下载（含历史版本）">⬇ <b id="dlNum">0</b> 次</span>
-    <span class="ver-chip">UI <b>v2.3.2</b></span>
+    <span class="ver-chip" id="verChip" title="UI 版本" style="cursor:default">UI <b>v2.4.0</b></span>
     <span class="ver-chip">CORE <b>v1.2.0</b></span>
     <div class="state-pill idle" id="statePill"><span class="pdot"></span><span id="pillText">初始化</span></div>
   </header>
@@ -506,7 +524,7 @@ body{
 
   <!-- 版本更新提示（检查到新 Release 时显示） -->
   <div class="upd-banner" id="updBanner" style="display:none">
-    <span>⚡ <b id="updTitle">发现新版本</b> <b id="updVer">—</b>（当前 <b id="updCur">v2.3.2</b>）</span>
+    <span>⚡ <b id="updTitle">发现新版本</b> <b id="updVer">—</b>（当前 <b id="updCur">v2.4.0</b>）</span>
     <a id="updGo" href="#">前往下载 →</a>
   </div>
 
@@ -625,6 +643,33 @@ body{
   </footer>
 </div>
 
+<!-- 开发者面板（密码解锁后显示；未解锁时界面无任何痕迹） -->
+<div id="devPanel" style="display:none">
+  <section class="panel tilt dev-panel">
+    <div class="console-head"><span class="tick"></span><h2>开发者模式</h2><span class="en">DEV MODE</span>
+      <div class="console-actions">
+        <button class="cbtn" id="devPwdBtn">修改密码</button>
+      </div>
+    </div>
+    <div class="dev-body" id="devBody"><div class="dev-empty">// 加载中…</div></div>
+  </section>
+</div>
+
+<!-- 密码输入模态 -->
+<div class="modal-mask" id="devPwdMask" style="display:none">
+  <div class="modal-box" style="width:380px">
+    <h3><span class="tick"></span>开发者验证</h3>
+    <div class="m-body" style="text-align:center">
+      <p style="margin-bottom:12px;color:var(--dim)">请输入开发者密码</p>
+      <input class="holo-input" id="devPwdInput" type="password" placeholder="••••••" style="margin-bottom:12px" autocomplete="off">
+      <div style="display:flex;gap:10px;justify-content:center">
+        <button class="ibtn" id="devPwdCancel">取消</button>
+        <button class="ibtn grn" id="devPwdOk">解锁</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="toasts"></div>
 <div id="modalRoot"></div>
 <div id="demoBadge">DEMO 预览模式 · 数据为模拟</div>
@@ -646,7 +691,7 @@ const demo = {
   async getState(){ return { running:demoRunning, external:false,
     phase: demoRunning?"running":"idle", port:"55990", host:"127.0.0.1",
     baseUrl:"http://127.0.0.1:55990/v1", uptime: demoRunning? Math.floor((Date.now()-demoStartAt)/1000):0,
-    autostart:false, apiKey:"", noticeDismissed:false, version:"v2.3.2", core:"v1.2.0", pid:12345 }; },
+    autostart:false, apiKey:"", noticeDismissed:false, version:"v2.4.0", core:"v1.2.0", pid:12345 }; },
   async start(){ demoRunning=true; demoStartAt=Date.now(); return {ok:true,msg:"模拟点火成功"}; },
   async stop(){ demoRunning=false; return {ok:true,msg:"模拟停堆"}; },
   async stats(){ if(!demoRunning) return {ok:false};
@@ -1197,7 +1242,7 @@ $("modelRefBtn").onclick = ()=>openModal(REF_HTML);
 /* ---------------- 启动画面 ---------------- */
 (function boot(){
   const lines = [
-    ["COMMANDCODE PROXY DECK v2.3.2", 0],
+    ["COMMANDCODE PROXY DECK v2.4.0", 0],
     ["初始化神经链路 ......... <span class='ok'>OK</span>", 260],
     ["装载代理核心 v1.2.0 .... <span class='ok'>OK</span>", 300],
     ["装载全息界面 ........... <span class='ok'>OK</span>", 300],
@@ -1223,7 +1268,7 @@ pollState();
 if (!HAS_BRIDGE && qs.get("state")==="running") setTimeout(()=>toggleCore(), 300);
 
 /* ---------------- 版本更新检查 ---------------- */
-// 版本号比较：v2.3.2 > v2.2.0 > v2.1.0。返回 1 / 0 / -1（a 比 b 大 / 等 / 小）。
+// 版本号比较：v2.4.0 > v2.2.0 > v2.1.0。返回 1 / 0 / -1（a 比 b 大 / 等 / 小）。
 function verCmp(a, b){
   const pa = (a||"").replace(/^v/i,"").split(".").map(n=>parseInt(n,10)||0);
   const pb = (b||"").replace(/^v/i,"").split(".").map(n=>parseInt(n,10)||0);
@@ -1239,7 +1284,7 @@ function verCmp(a, b){
 // 失败时先用上次缓存值显示，并定时重试直到成功。
 (async function checkUpdate(){
   if (!HAS_BRIDGE) return;
-  const cur = "v2.3.2";
+  const cur = "v2.4.0";
   // 下载量本地缓存：启动先显示上次值，刷新成功后更新。
   // 本地从未成功获取过（如 API 限流/离线）时，用发布时记录的已知值兜底——
   // 保证界面上始终有数可看，数据不是最新也没关系，恢复后自动刷新。
@@ -1386,6 +1431,109 @@ function hideModelTip(){
   const el = $("modelTip");
   if (el) el.style.display = "none";
 }
+
+/* ---------------- 开发者模式（密码门） ---------------- */
+const DEV_KEY = "devUnlocked_v1";
+function devUnlocked(){ try{ return localStorage.getItem(DEV_KEY) === "1"; }catch(e){ return false; } }
+
+// 隐藏入口：UI 版本号连点 5 次（无任何界面痕迹）
+(function(){
+  let clicks = 0, timer = null;
+  $("verChip").addEventListener("click", ()=>{
+    clicks++;
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(()=>{ clicks = 0; }, 1500);
+    if (clicks >= 5){
+      clicks = 0;
+      if (devUnlocked()){ showDevPanel(); return; }
+      $("devPwdInput").value = "";
+      $("devPwdMask").style.display = "flex";
+      setTimeout(()=>$("devPwdInput").focus(), 60);
+    }
+  });
+})();
+$("devPwdCancel").onclick = ()=>{ $("devPwdMask").style.display = "none"; };
+$("devPwdInput").addEventListener("keydown", e=>{ if (e.key === "Enter") $("devPwdOk").click(); });
+$("devPwdOk").onclick = async ()=>{
+  const pwd = $("devPwdInput").value;
+  const r = await call("DevVerify", pwd);
+  if (r && r.ok){
+    try{ localStorage.setItem(DEV_KEY, "1"); }catch(e){}
+    $("devPwdMask").style.display = "none";
+    toast("ok","开发者模式已解锁","");
+    log("ok", "开发者模式已解锁");
+    showDevPanel();
+  } else {
+    toast("err","密码错误","");
+    log("err", "开发者密码错误");
+  }
+};
+
+function showDevPanel(){
+  $("devPanel").style.display = "block";
+  refreshPlugins();
+  if (!window._devPoll){
+    window._devPoll = setInterval(()=>{ if (devUnlocked() && $("devPanel").style.display === "block") refreshPlugins(); }, 4000);
+  }
+}
+
+async function refreshPlugins(){
+  const wrap = $("devBody");
+  const list = await call("PluginList");
+  if (!Array.isArray(list)){ wrap.innerHTML = '<div class="dev-empty">// 无法读取插件状态</div>'; return; }
+  if (!list.length){ wrap.innerHTML = '<div class="dev-empty">// 无插件</div>'; return; }
+  wrap.innerHTML = "";
+  list.forEach(p=>{
+    const card = document.createElement("div");
+    card.className = "dev-card";
+    const dot = p.healthy ? "green" : (p.running ? "red" : "gray");
+    const st = p.healthy ? "运行中" : (p.running ? "异常" : (p.present ? "已停止" : "插件目录缺失"));
+    const btn = p.running
+      ? `<button class="cbtn" data-act="stop" data-id="${p.id}">停止</button>`
+      : `<button class="cbtn" data-act="start" data-id="${p.id}">启动</button>`;
+    card.innerHTML = `
+      <div class="dc-head">
+        <span class="dev-dot ${dot}"></span>
+        <span class="dc-name">${p.name}</span>
+        <span class="st-txt">${st}</span>
+        <div class="dc-actions">${btn}</div>
+      </div>
+      <div class="dc-meta">
+        <span>端口 ${p.port}</span>
+        <span class="dc-url" data-copy="${p.url}">${p.url}</span>
+        <span>日志 ${p.log}</span>
+      </div>`;
+    if (!p.present) card.querySelector(".dc-meta").insertAdjacentHTML("beforeend",
+      `<span style="color:var(--amber)">请确认 plugins/${p.dir} 已随程序放置</span>`);
+    wrap.appendChild(card);
+  });
+  wrap.querySelectorAll("[data-copy]").forEach(el=>{
+    el.onclick = ()=>copyText(el.dataset.copy, "插件地址");
+  });
+  wrap.querySelectorAll("[data-act]").forEach(btn=>{
+    btn.onclick = async ()=>{
+      btn.disabled = true;
+      const r = await call(btn.dataset.act === "start" ? "PluginStart" : "PluginStop", btn.dataset.id);
+      if (r && r.ok){ toast("ok", r.msg || "完成", ""); }
+      else { toast("err", (r&&r.msg)||"操作失败", ""); log("err", "插件操作失败: " + ((r&&r.msg)||"")); }
+      refreshPlugins();
+    };
+  });
+}
+
+// 修改密码（需原密码）
+$("devPwdBtn").onclick = async ()=>{
+  const oldP = prompt("输入原密码：");
+  if (oldP === null) return;
+  const newP = prompt("输入新密码（至少 4 位）：");
+  if (newP === null || !newP.trim()) return;
+  const r = await call("DevSetPwd", oldP, newP.trim());
+  if (r && r.ok){ toast("ok","密码已更新",""); log("ok","开发者密码已更新"); }
+  else { toast("err","更新失败", (r&&r.msg)||""); }
+};
+
+// 启动时若已解锁（本机记住）→ 直接显示开发者面板
+if (devUnlocked() && HAS_BRIDGE) showDevPanel();
 </script>
 <div id="modelTip" style="display:none"></div>
 </body>

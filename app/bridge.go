@@ -36,6 +36,7 @@ type app struct {
 	started  time.Time
 	apiKey   string
 	lastErr  string
+	plugins  map[string]*pluginState // 开发者模式插件（tuanjie/codebuddy）状态
 }
 
 func newApp(host, port, key string) *app {
@@ -472,6 +473,42 @@ func (a *app) bindAll(w webview.WebView) {
 			"downloads": totalDownloads, // 所有版本累计下载量
 		})
 		return string(b)
+	})
+	// 开发者模式：校验密码（隐藏入口解锁用）。
+	_ = w.Bind("ccDevVerify", func(pwd string) string {
+		if a.devVerifyPwd(strings.TrimSpace(pwd)) {
+			return `{"ok":true}`
+		}
+		return `{"ok":false,"msg":"密码错误"}`
+	})
+	// 开发者模式：修改密码（写入 dev_secret.json）。
+	_ = w.Bind("ccDevSetPwd", func(oldPwd, newPwd string) string {
+		if !a.devVerifyPwd(strings.TrimSpace(oldPwd)) {
+			return jsonErr(fmt.Errorf("原密码错误"))
+		}
+		if err := a.devSetPwd(strings.TrimSpace(newPwd)); err != nil {
+			return jsonErr(err)
+		}
+		return jsonOK("密码已更新")
+	})
+	// 插件列表（含状态；仅开发者解锁后前端调用）。
+	_ = w.Bind("ccPluginList", func() string {
+		b, _ := json.Marshal(a.pluginList())
+		return string(b)
+	})
+	// 启动插件（tuanjie / codebuddy）。
+	_ = w.Bind("ccPluginStart", func(id string) string {
+		if err := a.pluginStart(strings.TrimSpace(id)); err != nil {
+			return jsonErr(err)
+		}
+		return jsonOK("已启动")
+	})
+	// 停止插件。
+	_ = w.Bind("ccPluginStop", func(id string) string {
+		if err := a.pluginStop(strings.TrimSpace(id)); err != nil {
+			return jsonErr(err)
+		}
+		return jsonOK("已停止")
 	})
 	_ = w.Bind("ccCalib", func(model, v string) string {
 		v = strings.TrimSpace(v)
