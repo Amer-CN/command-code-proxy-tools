@@ -9,6 +9,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -506,9 +507,11 @@ func (a *app) bindAll(w webview.WebView) {
 		}
 		return jsonOK("已复制")
 	})
-	// HTTP/HTTPS 延迟测试：GET 请求计时（走环境/系统代理链路，非 ICMP ping）。
+	// HTTP/HTTPS 延迟测试：GET 请求计时（走代理链路，非 ICMP ping）。
 	// 用户开着梯子时，测的是经过梯子到你目标站点的真实可用延迟。
-	_ = w.Bind("ccLatencyTest", func() string {
+	// 参数 proxyAddr 可选：填 http://127.0.0.1:7890 这类地址时强制走该代理（适合
+	// 只用系统代理、没设环境变量的用户）；留空则走环境代理（HTTP_PROXY/HTTPS_PROXY/ALL_PROXY）。
+	_ = w.Bind("ccLatencyTest", func(proxyAddr string) string {
 		type probe struct{ name, url string }
 		targets := []probe{
 			{"CommandCode API", "https://api.commandcode.ai"},
@@ -522,6 +525,21 @@ func (a *app) bindAll(w webview.WebView) {
 			OK   bool   `json:"ok"`
 			Err  string `json:"err,omitempty"`
 		}
+		// 构造探测 client：手动代理优先，否则走环境代理
+		var client *http.Client
+		if addr := strings.TrimSpace(proxyAddr); addr != "" {
+			pu, err := url.Parse(addr)
+			if err != nil {
+				b, _ := json.Marshal(map[string]any{"ok": false, "msg": "代理地址格式错误: " + err.Error()})
+				return string(b)
+			}
+			client = &http.Client{
+				Timeout:   2500 * time.Millisecond,
+				Transport: &http.Transport{Proxy: http.ProxyURL(pu)},
+			}
+		} else {
+			client = httpClientProbe
+		}
 		results := make([]result, 0, len(targets))
 		for _, t := range targets {
 			r := result{Name: t.name, URL: t.url}
@@ -529,8 +547,8 @@ func (a *app) bindAll(w webview.WebView) {
 			var lastErr string
 			for attempt := 0; attempt < 2; attempt++ {
 				start := time.Now()
-				// 短超时，避免卡住界面；走环境代理（HTTP_PROXY/HTTPS_PROXY/ALL_PROXY）
-				resp, err := httpClientProbe.Get(t.url)
+				// 短超时，避免卡住界面；走代理链路
+				resp, err := client.Get(t.url)
 				if err == nil {
 					io.Copy(io.Discard, io.LimitReader(resp.Body, 1024))
 					resp.Body.Close()

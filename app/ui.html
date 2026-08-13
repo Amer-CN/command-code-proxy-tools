@@ -196,7 +196,11 @@ body{
 .hint-line{font-size:11px;color:var(--dim);letter-spacing:1px;margin-top:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hint-line b{color:#b7e6ff;font-weight:600}
 /* 延迟测试行 */
-.lat-row{display:flex;align-items:center;gap:8px;margin-top:8px;min-height:22px}
+.lat-row{display:flex;align-items:center;gap:8px;margin-top:8px;min-height:22px;flex-wrap:wrap}
+.lat-proxy{flex:1 1 150px;min-width:0;font-family:var(--mono);font-size:10px;color:#c9ecff;
+  border:1px solid rgba(0,229,255,.18);border-radius:4px;padding:3px 8px;background:rgba(0,229,255,.03)}
+.lat-proxy::placeholder{color:var(--dim2)}
+.lat-proxy:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 8px rgba(0,229,255,.2)}
 .lat-btn{flex:none;font-family:var(--mono);font-size:10px;letter-spacing:1px;cursor:pointer;
   border:1px solid rgba(0,229,255,.25);border-radius:4px;padding:3px 10px;color:var(--dim);
   background:rgba(0,229,255,.04);transition:all .2s var(--ease)}
@@ -539,6 +543,7 @@ body{
         <div class="hint-line">点击核心 点火/停堆 · 空格键</div>
         <!-- HTTP/HTTPS 延迟测试（走代理链路，非 ICMP ping） -->
         <div class="lat-row">
+          <input class="lat-proxy" id="latProxy" placeholder="代理地址（可选）如 http://127.0.0.1:7890" spellcheck="false" autocomplete="off">
           <button class="lat-btn" id="latTestBtn">测延迟</button>
           <span class="lat-result" id="latResult"><span class="lat-idle">HTTP/HTTPS 延迟 · 走代理链路</span></span>
         </div>
@@ -1018,11 +1023,14 @@ $("endpoint").onclick = ()=>copyText($("endpoint").textContent, "Base URL");
 // HTTP/HTTPS 延迟测试：GET 请求计时，走代理链路（非 ICMP，梯子开着也测得准）
 $("latTestBtn").onclick = async ()=>{
   const btn = $("latTestBtn"), res = $("latResult");
+  const proxy = $("latProxy").value.trim();
+  // 记住代理地址，下次打开自动填入
+  try{ localStorage.setItem("latProxy", proxy); }catch(e){}
   btn.disabled = true; btn.textContent = "测中…";
-  res.innerHTML = '<span class="lat-idle">正在探测 3 个目标…</span>';
-  const r = await call("LatencyTest");
+  res.innerHTML = '<span class="lat-idle">正在探测 3 个目标' + (proxy ? "（经 " + proxy + "）" : "") + '…</span>';
+  const r = await call("LatencyTest", proxy);
   if (!r || !r.ok || !r.targets || !r.targets.length){
-    res.innerHTML = '<span class="lat-t err"><b>探测失败</b></span><span>请确认网络 / 代理可用</span>';
+    res.innerHTML = '<span class="lat-t err"><b>探测失败</b></span><span>' + ((r&&r.msg)||"请确认网络 / 代理可用") + '</span>';
   } else {
     let html = "";
     r.targets.forEach(t=>{
@@ -1032,10 +1040,12 @@ $("latTestBtn").onclick = async ()=>{
     });
     res.innerHTML = html;
     const okN = r.targets.filter(t=>t.ok).length;
-    log("net", `延迟测试完成：${okN}/${r.targets.length} 可达 · ${r.targets.map(t=>t.name+"="+(t.ok?t.ms+"ms":"✗")).join(" ")}`);
+    log("net", `延迟测试完成：${okN}/${r.targets.length} 可达` + (proxy ? `（经 ${proxy}）` : "") + ` · ${r.targets.map(t=>t.name+"="+(t.ok?t.ms+"ms":"✗")).join(" ")}`);
   }
   btn.disabled = false; btn.textContent = "测延迟";
 };
+// 启动时恢复记住的代理地址
+try{ const saved = localStorage.getItem("latProxy"); if (saved) $("latProxy").value = saved; }catch(e){}
 $("toggleKey").onclick = ()=>{ const k=$("apiKey"); k.type = k.type==="password" ? "text" : "password"; };
 $("apiKey").addEventListener("input", e=>{ e.target.dataset.touched = "1"; });
 // 显式保存按钮
