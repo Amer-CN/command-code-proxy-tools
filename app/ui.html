@@ -98,7 +98,7 @@ body{
 @keyframes blink{to{opacity:.35}}
 
 /* ============ 主区网格 ============ */
-.deck{flex:1;display:grid;grid-template-columns:400px minmax(0,1fr) 330px;gap:14px;padding:14px 16px;min-height:0}
+.deck{flex:1;display:grid;grid-template-columns:400px minmax(0,1fr) 360px;gap:14px;padding:14px 16px;min-height:0}
 .panel{
   position:relative;border:1px solid var(--line);border-radius:10px;
   background:var(--glass);backdrop-filter:blur(12px);
@@ -291,10 +291,10 @@ body{
 .vendor-h{font-family:var(--mono);font-size:11px;letter-spacing:2.5px;color:var(--dim);margin:6px 2px 7px;
   display:flex;align-items:center;gap:8px}
 .vendor-h::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
-.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
 .chip{
-  font-family:var(--mono);font-size:10px;color:#a8d8f0;cursor:pointer;position:relative;
-  border:1px solid rgba(0,229,255,.2);border-radius:4px;padding:5px 8px;
+  font-family:var(--mono);font-size:11px;color:#a8d8f0;cursor:pointer;position:relative;
+  border:1px solid rgba(0,229,255,.2);border-radius:4px;padding:5px 7px;
   background:linear-gradient(160deg,rgba(0,229,255,.05),rgba(124,77,255,.05));
   transition:all .2s var(--ease);animation:chipin .45s var(--ease) both}
 @keyframes chipin{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:none}}
