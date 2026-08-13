@@ -283,6 +283,11 @@ var httpClient = &http.Client{Timeout: 1500 * time.Millisecond}
 // 1.5s 的默认超时不够（实测 ~3s），单独用 10s 超时。
 var httpClientSlow = &http.Client{Timeout: 10 * time.Second}
 
+// httpClientProbe 延迟测试专用：短超时 + 走环境代理（HTTP_PROXY/HTTPS_PROXY/ALL_PROXY）。
+// 注意：Go 默认读环境变量代理，不读 Windows 系统代理设置；用户若用 Clash 等
+// 系统级代理，请把 "打开系统代理" 与 "设置环境变量" 都打开，或手动设 ALL_PROXY。
+var httpClientProbe = &http.Client{Timeout: 2500 * time.Millisecond}
+
 func httpGetSlow(url string) (string, bool) {
 	resp, err := httpClientSlow.Get(url)
 	if err != nil {
@@ -500,6 +505,52 @@ func (a *app) bindAll(w webview.WebView) {
 			return jsonErr(err)
 		}
 		return jsonOK("已复制")
+	})
+	// HTTP/HTTPS 延迟测试：GET 请求计时（走环境/系统代理链路，非 ICMP ping）。
+	// 用户开着梯子时，测的是经过梯子到你目标站点的真实可用延迟。
+	_ = w.Bind("ccLatencyTest", func() string {
+		type probe struct{ name, url string }
+		targets := []probe{
+			{"CommandCode API", "https://api.commandcode.ai"},
+			{"GitHub", "https://api.github.com"},
+			{"国内 · 百度", "https://www.baidu.com"},
+		}
+		type result struct {
+			Name string `json:"name"`
+			URL  string `json:"url,omitempty"`
+			MS   int    `json:"ms"`
+			OK   bool   `json:"ok"`
+			Err  string `json:"err,omitempty"`
+		}
+		results := make([]result, 0, len(targets))
+		for _, t := range targets {
+			r := result{Name: t.name, URL: t.url}
+			best := -1
+			var lastErr string
+			for attempt := 0; attempt < 2; attempt++ {
+				start := time.Now()
+				// 短超时，避免卡住界面；走环境代理（HTTP_PROXY/HTTPS_PROXY/ALL_PROXY）
+				resp, err := httpClientProbe.Get(t.url)
+				if err == nil {
+					io.Copy(io.Discard, io.LimitReader(resp.Body, 1024))
+					resp.Body.Close()
+					ms := int(time.Since(start).Milliseconds())
+					if best < 0 || ms < best {
+						best = ms
+					}
+				} else {
+					lastErr = err.Error()
+				}
+			}
+			if best >= 0 {
+				r.MS, r.OK = best, true
+			} else {
+				r.Err = lastErr
+			}
+			results = append(results, r)
+		}
+		b, _ := json.Marshal(map[string]any{"ok": true, "targets": results})
+		return string(b)
 	})
 	_ = w.Bind("ccDismiss", func() string {
 		if err := os.WriteFile(a.noticeFile(), []byte("1"), 0o600); err != nil {

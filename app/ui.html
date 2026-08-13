@@ -195,6 +195,22 @@ body{
 @keyframes eqb{0%,100%{transform:scaleY(.16)}50%{transform:scaleY(1)}}
 .hint-line{font-size:11px;color:var(--dim);letter-spacing:1px;margin-top:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hint-line b{color:#b7e6ff;font-weight:600}
+/* 延迟测试行 */
+.lat-row{display:flex;align-items:center;gap:8px;margin-top:8px;min-height:22px}
+.lat-btn{flex:none;font-family:var(--mono);font-size:10px;letter-spacing:1px;cursor:pointer;
+  border:1px solid rgba(0,229,255,.25);border-radius:4px;padding:3px 10px;color:var(--dim);
+  background:rgba(0,229,255,.04);transition:all .2s var(--ease)}
+.lat-btn:hover{color:#eafcff;border-color:var(--cyan)}
+.lat-btn:active{transform:scale(.94)}
+.lat-btn:disabled{opacity:.5;cursor:wait}
+.lat-result{font-family:var(--mono);font-size:10px;color:var(--dim);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-width:0}
+.lat-result .lat-idle{color:var(--dim2)}
+.lat-result .lat-t{display:inline-block;margin-right:8px}
+.lat-result .lat-t b{font-weight:600}
+.lat-result .lat-t em{font-style:normal;opacity:.75;margin-left:3px;font-size:9px;letter-spacing:.5px}
+.lat-result .lat-t.ok b{color:var(--green)}
+.lat-result .lat-t.bad b{color:var(--amber)}
+.lat-result .lat-t.err b{color:var(--red)}
 
 /* ============ 链路配置 / 统计 ============ */
 .mid-col{display:flex;flex-direction:column;gap:14px;min-height:0}
@@ -521,6 +537,11 @@ body{
         </div>
         <div class="eq" id="eq"></div>
         <div class="hint-line">点击核心 点火/停堆 · 空格键</div>
+        <!-- HTTP/HTTPS 延迟测试（走代理链路，非 ICMP ping） -->
+        <div class="lat-row">
+          <button class="lat-btn" id="latTestBtn">测延迟</button>
+          <span class="lat-result" id="latResult"><span class="lat-idle">HTTP/HTTPS 延迟 · 走代理链路</span></span>
+        </div>
       </div>
     </section>
 
@@ -630,7 +651,12 @@ const demo = {
   async autostart(){ return {ok:true,msg:"模拟操作"}; },
   async open(){ return {ok:true}; },
   async copy(){ try{ await navigator.clipboard.writeText(arguments[0]); }catch(e){} return {ok:true}; },
-  async dismiss(){ return {ok:true}; }
+  async dismiss(){ return {ok:true}; },
+  async latencyTest(){ return {ok:true, targets:[
+    {name:"CommandCode API", ms:86, ok:true},
+    {name:"GitHub", ms:64, ok:true},
+    {name:"国内 · 百度", ms:23, ok:true}
+  ]}; }
 };
 async function call(fn, ...args){
   if (HAS_BRIDGE){
@@ -989,6 +1015,27 @@ $("autostartBtn").onclick = async ()=>{
 $("copyUrl").onclick = ()=>copyText($("baseUrl").value, "Base URL");
 $("baseUrl").onclick = ()=>copyText($("baseUrl").value, "Base URL");
 $("endpoint").onclick = ()=>copyText($("endpoint").textContent, "Base URL");
+// HTTP/HTTPS 延迟测试：GET 请求计时，走代理链路（非 ICMP，梯子开着也测得准）
+$("latTestBtn").onclick = async ()=>{
+  const btn = $("latTestBtn"), res = $("latResult");
+  btn.disabled = true; btn.textContent = "测中…";
+  res.innerHTML = '<span class="lat-idle">正在探测 3 个目标…</span>';
+  const r = await call("LatencyTest");
+  if (!r || !r.ok || !r.targets || !r.targets.length){
+    res.innerHTML = '<span class="lat-t err"><b>探测失败</b></span><span>请确认网络 / 代理可用</span>';
+  } else {
+    let html = "";
+    r.targets.forEach(t=>{
+      const cls = t.ok ? (t.ms < 200 ? "ok" : t.ms < 600 ? "bad" : "err") : "err";
+      const label = t.ok ? t.ms + "ms" : "超时";
+      html += `<span class="lat-t ${cls}"><b>${label}</b><em>${t.name}</em></span>`;
+    });
+    res.innerHTML = html;
+    const okN = r.targets.filter(t=>t.ok).length;
+    log("net", `延迟测试完成：${okN}/${r.targets.length} 可达 · ${r.targets.map(t=>t.name+"="+(t.ok?t.ms+"ms":"✗")).join(" ")}`);
+  }
+  btn.disabled = false; btn.textContent = "测延迟";
+};
 $("toggleKey").onclick = ()=>{ const k=$("apiKey"); k.type = k.type==="password" ? "text" : "password"; };
 $("apiKey").addEventListener("input", e=>{ e.target.dataset.touched = "1"; });
 // 显式保存按钮
