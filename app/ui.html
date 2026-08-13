@@ -493,8 +493,8 @@ body{
     </div>
     <div class="spacer"></div>
     <span class="ver-chip" id="dlChip" style="display:none" title="累计下载（含历史版本）">⬇ <b id="dlNum">0</b> 次</span>
-    <span class="ver-chip">UI <b>v2.3.1</b></span>
-    <span class="ver-chip">CORE <b>v1.1.0</b></span>
+    <span class="ver-chip">UI <b>v2.3.2</b></span>
+    <span class="ver-chip">CORE <b>v1.2.0</b></span>
     <div class="state-pill idle" id="statePill"><span class="pdot"></span><span id="pillText">初始化</span></div>
   </header>
 
@@ -506,7 +506,7 @@ body{
 
   <!-- 版本更新提示（检查到新 Release 时显示） -->
   <div class="upd-banner" id="updBanner" style="display:none">
-    <span>⚡ <b id="updTitle">发现新版本</b> <b id="updVer">—</b>（当前 <b id="updCur">v2.3.1</b>）</span>
+    <span>⚡ <b id="updTitle">发现新版本</b> <b id="updVer">—</b>（当前 <b id="updCur">v2.3.2</b>）</span>
     <a id="updGo" href="#">前往下载 →</a>
   </div>
 
@@ -646,7 +646,7 @@ const demo = {
   async getState(){ return { running:demoRunning, external:false,
     phase: demoRunning?"running":"idle", port:"55990", host:"127.0.0.1",
     baseUrl:"http://127.0.0.1:55990/v1", uptime: demoRunning? Math.floor((Date.now()-demoStartAt)/1000):0,
-    autostart:false, apiKey:"", noticeDismissed:false, version:"v2.3.1", core:"v1.1.0", pid:12345 }; },
+    autostart:false, apiKey:"", noticeDismissed:false, version:"v2.3.2", core:"v1.2.0", pid:12345 }; },
   async start(){ demoRunning=true; demoStartAt=Date.now(); return {ok:true,msg:"模拟点火成功"}; },
   async stop(){ demoRunning=false; return {ok:true,msg:"模拟停堆"}; },
   async stats(){ if(!demoRunning) return {ok:false};
@@ -1197,9 +1197,9 @@ $("modelRefBtn").onclick = ()=>openModal(REF_HTML);
 /* ---------------- 启动画面 ---------------- */
 (function boot(){
   const lines = [
-    ["COMMANDCODE PROXY DECK v2.3.1", 0],
+    ["COMMANDCODE PROXY DECK v2.3.2", 0],
     ["初始化神经链路 ......... <span class='ok'>OK</span>", 260],
-    ["装载代理核心 v1.1.0 .... <span class='ok'>OK</span>", 300],
+    ["装载代理核心 v1.2.0 .... <span class='ok'>OK</span>", 300],
     ["装载全息界面 ........... <span class='ok'>OK</span>", 300],
     ["系统就绪 · SYSTEM READY", 260]
   ];
@@ -1223,7 +1223,7 @@ pollState();
 if (!HAS_BRIDGE && qs.get("state")==="running") setTimeout(()=>toggleCore(), 300);
 
 /* ---------------- 版本更新检查 ---------------- */
-// 版本号比较：v2.3.1 > v2.2.0 > v2.1.0。返回 1 / 0 / -1（a 比 b 大 / 等 / 小）。
+// 版本号比较：v2.3.2 > v2.2.0 > v2.1.0。返回 1 / 0 / -1（a 比 b 大 / 等 / 小）。
 function verCmp(a, b){
   const pa = (a||"").replace(/^v/i,"").split(".").map(n=>parseInt(n,10)||0);
   const pb = (b||"").replace(/^v/i,"").split(".").map(n=>parseInt(n,10)||0);
@@ -1239,7 +1239,7 @@ function verCmp(a, b){
 // 失败时先用上次缓存值显示，并定时重试直到成功。
 (async function checkUpdate(){
   if (!HAS_BRIDGE) return;
-  const cur = "v2.3.1";
+  const cur = "v2.3.2";
   // 下载量本地缓存：启动先显示上次值，刷新成功后更新。
   // 本地从未成功获取过（如 API 限流/离线）时，用发布时记录的已知值兜底——
   // 保证界面上始终有数可看，数据不是最新也没关系，恢复后自动刷新。

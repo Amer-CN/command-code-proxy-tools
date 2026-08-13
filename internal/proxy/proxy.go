@@ -361,6 +361,7 @@ func (p *Proxy) StreamResponse(w http.ResponseWriter, r *http.Request, ccResp *h
 	toolCallIndex := 0
 	toolCallIndexes := map[string]int{}
 	var streamIn, streamOut, streamCacheRead, streamCacheWrite int64 // 累计本次流的 token 用量（finish 事件报告）
+	var reasoningBuilder strings.Builder                            // 累积思考内容（DeepSeek 方言透传）
 
 	process := func(line string) error {
 		p.debugf("[DEBUG] CommandCode stream line: %s", truncateLog(line))
@@ -384,6 +385,26 @@ func (p *Proxy) StreamResponse(w http.ResponseWriter, r *http.Request, ccResp *h
 				Model:   model,
 				Choices: []api.OpenAIChoice{{Index: 0, Delta: &delta}},
 			})
+
+		case "reasoning-delta":
+			// 思考内容透传（DeepSeek 方言 delta.reasoning_content）：
+			// DSH 等客户端靠它渲染思考过程、统计 reasoning_tokens。
+			reasoningBuilder.WriteString(event.Text)
+			delta := api.OpenAIDelta{ReasoningContent: event.Text}
+			if !sentRole {
+				delta.Role = "assistant"
+				sentRole = true
+			}
+			p.WriteSSE(w, flusher, api.OpenAIChatResponse{
+				ID:      requestID,
+				Object:  "chat.completion.chunk",
+				Created: created,
+				Model:   model,
+				Choices: []api.OpenAIChoice{{Index: 0, Delta: &delta}},
+			})
+
+		case "reasoning-start", "reasoning-end":
+			// 无内容标记事件，跳过（内容由 reasoning-delta 携带）
 
 		case "tool-use":
 			toolCalls := []api.OpenAIDeltaToolCall{{
@@ -582,6 +603,8 @@ func (p *Proxy) WriteSSE(w io.Writer, flusher http.Flusher, resp api.OpenAIChatR
 // NonStreamResponse handles non-streaming response
 func (p *Proxy) NonStreamResponse(w http.ResponseWriter, ccResp *http.Response, requestID, model string, created int64) {
 	var content strings.Builder
+	var reasoningContent strings.Builder // DeepSeek 方言：思考内容
+	var reasoningTokens int
 	var inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens int
 	var hasToolCalls bool
 	var toolCalls []api.ToolCall
@@ -657,12 +680,17 @@ func (p *Proxy) NonStreamResponse(w http.ResponseWriter, ccResp *http.Response, 
 					},
 				})
 			}
+		case "reasoning-delta":
+			// 思考内容（DeepSeek 方言）累积，最终放进 message.reasoning_content
+			reasoningContent.WriteString(event.Text)
+
 		case "finish":
 			if event.TotalUsage != nil {
 				inputTokens = event.TotalUsage.InputTokens
 				outputTokens = event.TotalUsage.OutputTokens
 				cacheReadTokens = event.TotalUsage.CacheReadTokens
 				cacheWriteTokens = event.TotalUsage.CacheWriteTokens
+				reasoningTokens = event.TotalUsage.ReasoningTokens
 			}
 		case "error":
 			log.Printf("[ERROR] Stream error: %v", event.Error)
@@ -676,6 +704,9 @@ func (p *Proxy) NonStreamResponse(w http.ResponseWriter, ccResp *http.Response, 
 	msg := &api.OpenAIMessage{
 		Role:    "assistant",
 		Content: content.String(),
+	}
+	if reasoningContent.Len() > 0 {
+		msg.ReasoningContent = reasoningContent.String() // DeepSeek 方言：思考内容
 	}
 	finishReason := "stop"
 	if hasToolCalls {
@@ -699,6 +730,9 @@ func (p *Proxy) NonStreamResponse(w http.ResponseWriter, ccResp *http.Response, 
 			CompletionTokens: outputTokens,
 			TotalTokens:      inputTokens + outputTokens,
 		},
+	}
+	if reasoningTokens > 0 {
+		response.Usage.CompletionTokensDetails = &api.OpenAICompletionDetails{ReasoningTokens: reasoningTokens}
 	}
 
 	// Record local usage stats (counts tokens CommandCode actually reported).

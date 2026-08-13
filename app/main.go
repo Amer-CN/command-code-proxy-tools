@@ -28,8 +28,8 @@ import (
 )
 
 const (
-	appVersion  = "v2.3.1"
-	coreVersion = "v1.1.0"
+	appVersion  = "v2.3.2"
+	coreVersion = "v1.2.0"
 	appTitle    = "CommandCode 代理控制台"
 )
 

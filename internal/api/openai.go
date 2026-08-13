@@ -3,13 +3,14 @@ package api
 // OpenAI-compatible types (client-facing)
 
 type OpenAIMessage struct {
-	Role       string        `json:"role"`
-	Content    interface{}   `json:"content,omitempty"`
-	Name       string        `json:"name,omitempty"`
-	ToolCalls  []ToolCall    `json:"tool_calls,omitempty"`
-	ToolCallID string        `json:"tool_call_id,omitempty"`
-	Refusal    string        `json:"refusal,omitempty"`
-	Audio      *MessageAudio `json:"audio,omitempty"`
+	Role             string        `json:"role"`
+	Content          interface{}   `json:"content,omitempty"`
+	Name             string        `json:"name,omitempty"`
+	ToolCalls        []ToolCall    `json:"tool_calls,omitempty"`
+	ToolCallID       string        `json:"tool_call_id,omitempty"`
+	Refusal          string        `json:"refusal,omitempty"`
+	Audio            *MessageAudio `json:"audio,omitempty"`
+	ReasoningContent string        `json:"reasoning_content,omitempty"` // DeepSeek 方言：思考内容
 }
 
 type ContentPart struct {
@@ -86,10 +87,11 @@ type OpenAIChoice struct {
 }
 
 type OpenAIDelta struct {
-	Role      string                `json:"role,omitempty"`
-	Content   string                `json:"content,omitempty"`
-	ToolCalls []OpenAIDeltaToolCall `json:"tool_calls,omitempty"`
-	Refusal   string                `json:"refusal,omitempty"`
+	Role             string                `json:"role,omitempty"`
+	Content          string                `json:"content,omitempty"`
+	ToolCalls        []OpenAIDeltaToolCall `json:"tool_calls,omitempty"`
+	Refusal          string                `json:"refusal,omitempty"`
+	ReasoningContent string                `json:"reasoning_content,omitempty"` // DeepSeek 方言：思考内容
 }
 
 type OpenAIDeltaToolCall struct {
@@ -108,6 +110,12 @@ type OpenAIUsage struct {
 	PromptTokens     int `json:"prompt_tokens"`
 	CompletionTokens int `json:"completion_tokens"`
 	TotalTokens      int `json:"total_tokens"`
+	// DeepSeek 方言：推理 token 明细
+	CompletionTokensDetails *OpenAICompletionDetails `json:"completion_tokens_details,omitempty"`
+}
+
+type OpenAICompletionDetails struct {
+	ReasoningTokens int `json:"reasoning_tokens"`
 }
 
 type OpenAIChatResponse struct {

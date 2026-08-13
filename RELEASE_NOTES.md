@@ -3,7 +3,17 @@
 给 [command-code-proxy-server](https://github.com/dev2k6/command-code-proxy-server)（原作者 **dev2k6**，本仓库核心代码来自上游）
 做的 Windows 便携工具：本地代理 + 科幻全息控制台 + 一键启停 + 开机自启。
 
-## v2.3.1（2026-08-13）—— 延迟测试多行显示 · 界面微调
+## v2.3.2（2026-08-13）—— 思考内容透传（DeepSeek 方言 reasoning_content）
+
+- **推理过程透传**：上游 CommandCode 一直通过 `reasoning-delta` 事件返回思考内容，
+  但此前代理未解析该事件类型，思考过程被静默丢弃（只保留最终答案）。现完整透传：
+  - 流式响应：`delta.reasoning_content` 增量推送（DSH 等客户端实时渲染思考过程）
+  - 非流式响应：`message.reasoning_content` 字段 + `usage.completion_tokens_details.reasoning_tokens` 统计
+- `reasoning_effort` 档位（off/low/medium/high/max）行为差异现在可见：off 档思考极少、
+  max 档完整推理链
+- 内核 v1.2.0：新增 reasoning 事件解析与透传
+
+## v2.3.1（2026-08-13）—— 延迟测试多行显示 · 界面微调（2026-08-13）—— 延迟测试多行显示 · 界面微调
 
 - **延迟测试改版**：结果分多行显示（每个目标一行），字体调大；代理输入框/按钮收窄，不再超出面板边界
 - **模型矩阵字号还原**：模型芯片字体从 12px 调回 11px（用户反馈改大后不如原来协调）

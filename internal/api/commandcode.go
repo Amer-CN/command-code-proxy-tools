@@ -76,5 +76,6 @@ type CCStreamEvent struct {
 		CacheWriteTokens int `json:"cacheWriteTokens"`
 		CacheReadCost    *float64 `json:"cacheReadCost"`
 		CacheWriteCost   *float64 `json:"cacheWriteCost"`
+		ReasoningTokens  int `json:"reasoningTokens"` // DeepSeek 方言：推理 token 数
 	} `json:"totalUsage"`
 }
