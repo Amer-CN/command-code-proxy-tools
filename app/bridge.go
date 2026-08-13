@@ -508,9 +508,8 @@ func (a *app) bindAll(w webview.WebView) {
 		return jsonOK("已复制")
 	})
 	// HTTP/HTTPS 延迟测试：GET 请求计时（走代理链路，非 ICMP ping）。
-	// 用户开着梯子时，测的是经过梯子到你目标站点的真实可用延迟。
-	// 参数 proxyAddr 可选：填 http://127.0.0.1:7890 这类地址时强制走该代理（适合
-	// 只用系统代理、没设环境变量的用户）；留空则走环境代理（HTTP_PROXY/HTTPS_PROXY/ALL_PROXY）。
+	// proxyAddr 可选：填 http://127.0.0.1:7890 这类地址时强制走该代理；留空时
+	// 先探测常见本地代理端口，找到可用的自动使用（并返回 detected），否则走环境代理/直连。
 	_ = w.Bind("ccLatencyTest", func(proxyAddr string) string {
 		type probe struct{ name, url string }
 		targets := []probe{
@@ -525,7 +524,8 @@ func (a *app) bindAll(w webview.WebView) {
 			OK   bool   `json:"ok"`
 			Err  string `json:"err,omitempty"`
 		}
-		// 构造探测 client：手动代理优先，否则走环境代理
+		// 探测可用代理：显式地址优先；否则尝试常见 Clash/梯子端口
+		detected := ""
 		var client *http.Client
 		if addr := strings.TrimSpace(proxyAddr); addr != "" {
 			pu, err := url.Parse(addr)
@@ -534,11 +534,39 @@ func (a *app) bindAll(w webview.WebView) {
 				return string(b)
 			}
 			client = &http.Client{
-				Timeout:   2500 * time.Millisecond,
+				Timeout:   2000 * time.Millisecond,
 				Transport: &http.Transport{Proxy: http.ProxyURL(pu)},
 			}
 		} else {
-			client = httpClientProbe
+			// 候选端口：Clash 混合端口 7890/7897、V2Ray 10808/10809、通用 8888/1080
+			candidates := []string{
+				"http://127.0.0.1:7897", "http://127.0.0.1:7890",
+				"http://127.0.0.1:10809", "http://127.0.0.1:10808",
+				"http://127.0.0.1:8888", "http://127.0.0.1:1080",
+			}
+			for _, c := range candidates {
+				pu, err := url.Parse(c)
+				if err != nil {
+					continue
+				}
+				probe := &http.Client{
+					Timeout:   1200 * time.Millisecond,
+					Transport: &http.Transport{Proxy: http.ProxyURL(pu)},
+				}
+				resp, err := probe.Get("https://api.commandcode.ai")
+				if err == nil {
+					resp.Body.Close()
+					detected = c
+					client = &http.Client{
+						Timeout:   2500 * time.Millisecond,
+						Transport: &http.Transport{Proxy: http.ProxyURL(pu)},
+					}
+					break
+				}
+			}
+			if client == nil {
+				client = httpClientProbe // 无可用代理 → 环境代理/直连
+			}
 		}
 		results := make([]result, 0, len(targets))
 		for _, t := range targets {
@@ -547,7 +575,6 @@ func (a *app) bindAll(w webview.WebView) {
 			var lastErr string
 			for attempt := 0; attempt < 2; attempt++ {
 				start := time.Now()
-				// 短超时，避免卡住界面；走代理链路
 				resp, err := client.Get(t.url)
 				if err == nil {
 					io.Copy(io.Discard, io.LimitReader(resp.Body, 1024))
@@ -567,7 +594,7 @@ func (a *app) bindAll(w webview.WebView) {
 			}
 			results = append(results, r)
 		}
-		b, _ := json.Marshal(map[string]any{"ok": true, "targets": results})
+		b, _ := json.Marshal(map[string]any{"ok": true, "targets": results, "detected": detected})
 		return string(b)
 	})
 	_ = w.Bind("ccDismiss", func() string {
