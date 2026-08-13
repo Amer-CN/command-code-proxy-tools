@@ -1033,6 +1033,13 @@ $("latTestBtn").onclick = async ()=>{
     res.innerHTML = '<span class="lat-t err"><b>探测失败</b></span><span>' + ((r&&r.msg)||"请确认网络 / 代理可用") + '</span>';
   } else {
     let html = "";
+    // 模型推理延迟（TTFB）——模型"卡不卡"的真实指标，优先显示
+    if (r.inference){
+      const inf = r.inference;
+      const cls = inf.ok ? (inf.ms < 1500 ? "ok" : inf.ms < 4000 ? "bad" : "err") : "err";
+      const label = inf.ok ? inf.ms + "ms" : "✗";
+      html += `<span class="lat-t ${cls}"><b>${label}</b><em>模型推理</em></span>`;
+    }
     r.targets.forEach(t=>{
       const cls = t.ok ? (t.ms < 200 ? "ok" : t.ms < 600 ? "bad" : "err") : "err";
       const label = t.ok ? t.ms + "ms" : "超时";

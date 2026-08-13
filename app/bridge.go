@@ -3,6 +3,8 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -594,7 +596,23 @@ func (a *app) bindAll(w webview.WebView) {
 			}
 			results = append(results, r)
 		}
-		b, _ := json.Marshal(map[string]any{"ok": true, "targets": results, "detected": detected})
+		// 推理延迟（模型"卡不卡"的真实指标）：经本地代理 /v1/chat/completions 发 1-token 最小请求，
+		// 测首 token 时间（TTFB）。仅代理运行时可测。
+		a.mu.Lock()
+		running := a.running
+		a.mu.Unlock()
+		var inference *result
+		if running {
+			inf := result{Name: "模型推理", URL: a.baseURL() + "/v1/chat/completions"}
+			ms, err := measureFirstToken(a.baseURL(), a.apiKey)
+			if err == nil {
+				inf.MS, inf.OK = ms, true
+			} else {
+				inf.Err = err.Error()
+			}
+			inference = &inf
+		}
+		b, _ := json.Marshal(map[string]any{"ok": true, "targets": results, "detected": detected, "inference": inference})
 		return string(b)
 	})
 	_ = w.Bind("ccDismiss", func() string {
@@ -609,4 +627,46 @@ func (a *app) bindAll(w webview.WebView) {
 		}
 		return jsonOK("已记录")
 	})
+}
+
+// measureFirstToken 经本地代理发一个 1-token 最小推理请求，测首 token 时间（TTFB）。
+// 这才是"模型卡不卡"的真实指标——不是网络 RTT，是实际开始吐 token 的快慢。
+func measureFirstToken(baseURL, apiKey string) (int, error) {
+	body := map[string]any{
+		"model":    "deepseek/deepseek-v4-flash", // 用最便宜的模型测推理链路，省额度
+		"messages": []map[string]any{{"role": "user", "content": "hi"}},
+		"stream":   true, // 流式才能测 TTFB
+	}
+	b, _ := json.Marshal(body)
+	req, err := http.NewRequest(http.MethodPost, baseURL+"/v1/chat/completions", bytes.NewReader(b))
+	if err != nil {
+		return 0, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "text/event-stream")
+	if apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+apiKey)
+	}
+	client := &http.Client{Timeout: 15 * time.Second} // 推理可能慢，给足超时
+	start := time.Now()
+	resp, err := client.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return 0, fmt.Errorf("HTTP %d", resp.StatusCode)
+	}
+	// 读到第一个非空 SSE data 行 = 首 token 到达
+	reader := bufio.NewReader(resp.Body)
+	for {
+		line, err := reader.ReadString('\n')
+		if strings.HasPrefix(line, "data:") && strings.TrimSpace(strings.TrimPrefix(line, "data:")) != "" &&
+			!strings.Contains(line, "[DONE]") {
+			return int(time.Since(start).Milliseconds()), nil
+		}
+		if err != nil {
+			return 0, err
+		}
+	}
 }
