@@ -104,7 +104,13 @@ func ConvertMessages(openAIMsgs []api.OpenAIMessage) []api.CCMessage {
 			// history items such as reasoning summaries that carry no text).
 			continue
 		}
-		ccMsgs = append(ccMsgs, api.CCMessage{Role: m.Role, Content: contentParts})
+		// 上游只接受 user|assistant|tool；未知 role（如未提取的 developer、
+		// 第三方客户端的自定义 role）兜底为 user，避免 400。
+		role := m.Role
+		if role != "user" && role != "assistant" && role != "tool" {
+			role = "user"
+		}
+		ccMsgs = append(ccMsgs, api.CCMessage{Role: role, Content: contentParts})
 	}
 	return ccMsgs
 }
@@ -327,7 +333,10 @@ func ExtractSystem(msgs []api.OpenAIMessage) (string, []api.OpenAIMessage) {
 	var system strings.Builder
 	var rest []api.OpenAIMessage
 	for _, m := range msgs {
-		if m.Role == "system" {
+		// "developer" 是 OpenAI/DeepSeek 对 system 的新命名（DSH 等框架用它做
+		// 系统提示），必须与 system 同等提取——否则会原样转发给上游，
+		// 而 CommandCode 的 messages[].role 只接受 user|assistant|tool。
+		if m.Role == "system" || m.Role == "developer" {
 			if system.Len() > 0 {
 				system.WriteString("\n")
 			}

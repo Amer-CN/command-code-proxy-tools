@@ -30,3 +30,37 @@ func TestConvertMessagesSkipsEmptyContent(t *testing.T) {
 		t.Fatalf("unexpected order/roles: %+v", cc)
 	}
 }
+
+// TestExtractSystemDeveloperRole: DSH 等框架用 role:"developer" 做系统提示，
+// 必须与 "system" 同等提取，否则原样转发导致上游 400（只认 user|assistant|tool）。
+func TestExtractSystemDeveloperRole(t *testing.T) {
+	msgs := []api.OpenAIMessage{
+		{Role: "developer", Content: "You are an AI agent."},
+		{Role: "user", Content: "hi"},
+	}
+	sys, rest := ExtractSystem(msgs)
+	if sys != "You are an AI agent." {
+		t.Fatalf("system = %q, want developer content extracted", sys)
+	}
+	if len(rest) != 1 || rest[0].Role != "user" {
+		t.Fatalf("rest = %+v, want only the user message", rest)
+	}
+}
+
+// TestConvertUnknownRoleFallback: 未知 role（如残留的 developer）兜底为 user，
+// 保证上游 schema（user|assistant|tool）不会因非法 role 报 400。
+func TestConvertUnknownRoleFallback(t *testing.T) {
+	msgs := []api.OpenAIMessage{
+		{Role: "developer", Content: "instructions"},
+		{Role: "user", Content: "hi"},
+	}
+	cc := ConvertMessages(msgs)
+	if len(cc) != 2 {
+		t.Fatalf("len = %d, want 2", len(cc))
+	}
+	for i, m := range cc {
+		if m.Role != "user" && m.Role != "assistant" && m.Role != "tool" {
+			t.Fatalf("cc[%d].role = %q, must be user|assistant|tool", i, m.Role)
+		}
+	}
+}

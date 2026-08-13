@@ -236,6 +236,11 @@ func (p *Proxy) HandleChatCompletions(w http.ResponseWriter, r *http.Request) {
 		p.writeOpenAIError(w, http.StatusInternalServerError, "Failed to build request", "server_error")
 		return
 	}
+	if p.Debug {
+		if ccJSON, jerr := json.Marshal(ccBody); jerr == nil {
+			p.debugf("[DEBUG] CommandCode body: %s", truncateLog(string(ccJSON)))
+		}
+	}
 
 	// Create upstream request
 	ccReq, err := p.CreateUpstreamRequest(r.Context(), ccBody, apiKey)

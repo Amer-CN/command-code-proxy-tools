@@ -41,6 +41,7 @@ var (
 	flagHost     = flag.String("host", "127.0.0.1", "代理监听地址")
 	flagAPIKey   = flag.String("api-key", "", "CommandCode API Key（可选，也可在界面里填）")
 	flagHeadless = flag.Bool("headless", false, "无窗口后台模式（供开机自启使用）")
+	flagDebug    = flag.Bool("debug", false, "调试模式：打印请求/响应体到日志（headless-error.log）")
 	flagVersion  = flag.Bool("version", false, "打印版本并退出")
 )
 
@@ -59,6 +60,7 @@ func runCoreHeadless(host, port, apiKey string) error {
 		time.Sleep(300 * time.Millisecond)
 	}
 	p := proxy.NewProxy(apiKey)
+	p.Debug = *flagDebug
 	p.SetStatsFile(filepath.Join(exeDir(), "stats.json"))
 	srv := server.NewServer(p)
 	srv.SetHost(host)
