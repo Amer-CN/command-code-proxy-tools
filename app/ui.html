@@ -494,7 +494,7 @@ body{
     <div class="spacer"></div>
     <span class="ver-chip" id="dlChip" style="display:none" title="累计下载（含历史版本）">⬇ <b id="dlNum">0</b> 次</span>
     <span class="ver-chip">UI <b>v2.3.1</b></span>
-    <span class="ver-chip">CORE <b>v1.0.9</b></span>
+    <span class="ver-chip">CORE <b>v1.1.0</b></span>
     <div class="state-pill idle" id="statePill"><span class="pdot"></span><span id="pillText">初始化</span></div>
   </header>
 
@@ -646,7 +646,7 @@ const demo = {
   async getState(){ return { running:demoRunning, external:false,
     phase: demoRunning?"running":"idle", port:"55990", host:"127.0.0.1",
     baseUrl:"http://127.0.0.1:55990/v1", uptime: demoRunning? Math.floor((Date.now()-demoStartAt)/1000):0,
-    autostart:false, apiKey:"", noticeDismissed:false, version:"v2.3.1", core:"v1.0.9", pid:12345 }; },
+    autostart:false, apiKey:"", noticeDismissed:false, version:"v2.3.1", core:"v1.1.0", pid:12345 }; },
   async start(){ demoRunning=true; demoStartAt=Date.now(); return {ok:true,msg:"模拟点火成功"}; },
   async stop(){ demoRunning=false; return {ok:true,msg:"模拟停堆"}; },
   async stats(){ if(!demoRunning) return {ok:false};
@@ -1199,7 +1199,7 @@ $("modelRefBtn").onclick = ()=>openModal(REF_HTML);
   const lines = [
     ["COMMANDCODE PROXY DECK v2.3.1", 0],
     ["初始化神经链路 ......... <span class='ok'>OK</span>", 260],
-    ["装载代理核心 v1.0.9 .... <span class='ok'>OK</span>", 300],
+    ["装载代理核心 v1.1.0 .... <span class='ok'>OK</span>", 300],
     ["装载全息界面 ........... <span class='ok'>OK</span>", 300],
     ["系统就绪 · SYSTEM READY", 260]
   ];

@@ -89,6 +89,15 @@ CommandCodeProxyDeck.exe（单个独立 exe，~15MB）
 - 界面日志流有上限（220 条自动裁剪），长时间运行不因 DOM 膨胀变卡
 - 统计写入为原子写（tmp + rename），对话中每轮写一次，无锁竞争问题
 
+## 客户端兼容性（内核 v1.1.0+）
+
+- **DeepSeek Harness（DSH）**：支持 `role:"developer"` 系统提示（与 `system` 同等处理），
+  带工具调用的多轮对话不再被上游 400 拒绝；`reasoningEfforts`（off/low/medium/high/max）各档位实测可用
+- **Codex / ZCode / OpenAI 兼容客户端**：标准 `system/user/assistant/tool` 消息完整支持
+- 未知消息角色自动兜底为 `user`，任何客户端都不会因角色命名差异触发上游校验失败
+- 超长对话自动压缩 `max_tokens`（上下文感知），接近 1M 上限时不再被上游拒绝
+- 排查协议问题可用 `CommandCodeProxyDeck.exe -headless -debug`（请求/响应体落 headless-error.log）
+
 ## 常见问题（FAQ）
 
 ### 报错 `400 ... expected number to be <=200000 at "params.max_tokens"`，我是不是被封了？
