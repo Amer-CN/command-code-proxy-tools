@@ -364,7 +364,9 @@ body{
 
 /* ============ 杀软提示横幅 ============ */
 /* ============ 开发者模式面板 ============ */
-.dev-panel{margin:14px 16px 0;flex:none}
+/* fixed 浮动层：显示时浮在主界面底部（不依赖文档流，避免视口外不可见） */
+#devPanel{position:fixed;left:16px;right:16px;bottom:14px;z-index:40;display:none}
+.dev-panel{margin:0;box-shadow:0 18px 50px rgba(0,0,0,.6)}
 .dev-panel .dev-body{display:flex;flex-direction:column;gap:10px;padding:12px 16px}
 .dev-empty{color:var(--dim2);font-size:12px;font-family:var(--mono);padding:8px 2px}
 .dev-card{border:1px solid var(--line2);border-radius:8px;padding:10px 14px;
@@ -649,6 +651,7 @@ body{
     <div class="console-head"><span class="tick"></span><h2>开发者模式</h2><span class="en">DEV MODE</span>
       <div class="console-actions">
         <button class="cbtn" id="devPwdBtn">修改密码</button>
+        <button class="cbtn" id="devCloseBtn">收起</button>
       </div>
     </div>
     <div class="dev-body" id="devBody"><div class="dev-empty">// 加载中…</div></div>
@@ -1531,6 +1534,8 @@ $("devPwdBtn").onclick = async ()=>{
   if (r && r.ok){ toast("ok","密码已更新",""); log("ok","开发者密码已更新"); }
   else { toast("err","更新失败", (r&&r.msg)||""); }
 };
+// 收起面板（已解锁状态下连点版本号可随时再展开）
+$("devCloseBtn").onclick = ()=>{ $("devPanel").style.display = "none"; };
 
 // 启动时若已解锁（本机记住）→ 直接显示开发者面板
 if (devUnlocked() && HAS_BRIDGE) showDevPanel();
