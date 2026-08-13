@@ -196,25 +196,26 @@ body{
 .hint-line{font-size:12px;color:var(--dim);letter-spacing:1px;margin-top:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hint-line b{color:#b7e6ff;font-weight:600}
 /* 延迟测试行 */
-.lat-row{display:flex;align-items:center;gap:8px;margin-top:8px;min-height:22px;flex-wrap:wrap}
-.lat-proxy{flex:1 1 150px;min-width:0;font-family:var(--mono);font-size:11px;color:#c9ecff;
-  border:1px solid rgba(0,229,255,.18);border-radius:4px;padding:3px 8px;background:rgba(0,229,255,.03)}
+.lat-row{display:flex;align-items:center;gap:5px;margin-top:8px;min-height:22px;flex-wrap:nowrap}
+.lat-proxy{flex:1 1 90px;min-width:0;max-width:118px;font-family:var(--mono);font-size:11px;color:#c9ecff;
+  border:1px solid rgba(0,229,255,.18);border-radius:4px;padding:3px 6px;background:rgba(0,229,255,.03)}
 .lat-proxy::placeholder{color:var(--dim2)}
 .lat-proxy:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 8px rgba(0,229,255,.2)}
 .lat-btn{flex:none;font-family:var(--mono);font-size:11px;letter-spacing:1px;cursor:pointer;
-  border:1px solid rgba(0,229,255,.25);border-radius:4px;padding:3px 10px;color:var(--dim);
+  border:1px solid rgba(0,229,255,.25);border-radius:4px;padding:3px 7px;color:var(--dim);
   background:rgba(0,229,255,.04);transition:all .2s var(--ease)}
 .lat-btn:hover{color:#eafcff;border-color:var(--cyan)}
 .lat-btn:active{transform:scale(.94)}
 .lat-btn:disabled{opacity:.5;cursor:wait}
-.lat-result{font-family:var(--mono);font-size:11px;color:var(--dim);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-width:0}
-.lat-result .lat-idle{color:var(--dim2)}
-.lat-result .lat-t{display:inline-block;margin-right:8px}
-.lat-result .lat-t b{font-weight:600}
-.lat-result .lat-t em{font-style:normal;opacity:.75;margin-left:3px;font-size:10px;letter-spacing:.5px}
-.lat-result .lat-t.ok b{color:var(--green)}
-.lat-result .lat-t.bad b{color:var(--amber)}
-.lat-result .lat-t.err b{color:var(--red)}
+/* 延迟结果：多行显示，每目标一行；调大字体更易读 */
+.lat-results{display:flex;flex-direction:column;gap:4px;margin-top:6px;font-family:var(--mono);font-size:13px;color:var(--dim)}
+.lat-results .lat-idle{color:var(--dim2);font-size:12px}
+.lat-results .lat-t{display:flex;align-items:baseline;gap:6px}
+.lat-results .lat-t b{font-weight:700;font-size:14px;min-width:56px}
+.lat-results .lat-t em{font-style:normal;opacity:.8;font-size:12px;letter-spacing:.5px}
+.lat-results .lat-t.ok b{color:var(--green)}
+.lat-results .lat-t.bad b{color:var(--amber)}
+.lat-results .lat-t.err b{color:var(--red)}
 
 /* ============ 链路配置 / 统计 ============ */
 .mid-col{display:flex;flex-direction:column;gap:14px;min-height:0}
@@ -287,13 +288,13 @@ body{
 .models-panel{display:flex;flex-direction:column;min-height:0}
 .models-panel .p-body{flex:1;overflow-y:auto;min-height:0;padding:10px 14px}
 .vendor-g{margin-bottom:12px}
-.vendor-h{font-family:var(--mono);font-size:12px;letter-spacing:2.5px;color:var(--dim);margin:6px 2px 7px;
+.vendor-h{font-family:var(--mono);font-size:11px;letter-spacing:2.5px;color:var(--dim);margin:6px 2px 7px;
   display:flex;align-items:center;gap:8px}
 .vendor-h::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
 .chips{display:flex;flex-wrap:wrap;gap:7px}
 .chip{
-  font-family:var(--mono);font-size:12px;color:#a8d8f0;cursor:pointer;position:relative;
-  border:1px solid rgba(0,229,255,.2);border-radius:4px;padding:6px 10px;
+  font-family:var(--mono);font-size:10px;color:#a8d8f0;cursor:pointer;position:relative;
+  border:1px solid rgba(0,229,255,.2);border-radius:4px;padding:5px 8px;
   background:linear-gradient(160deg,rgba(0,229,255,.05),rgba(124,77,255,.05));
   transition:all .2s var(--ease);animation:chipin .45s var(--ease) both}
 @keyframes chipin{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:none}}
@@ -369,6 +370,7 @@ body{
   animation:updin .35s var(--ease) both}
 @keyframes updin{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
 .upd-banner b{color:#c8ffe8;letter-spacing:1px}
+.upd-banner .dl-count{font-family:var(--mono);font-size:11px;color:#8fe8c0;letter-spacing:1px}
 .upd-banner a{color:var(--cyan);text-decoration:none;border-bottom:1px dashed var(--cyan);cursor:pointer;margin-left:auto;flex:none}
 .upd-banner a:hover{color:#fff}
 .upd-banner .ibtn{margin-left:12px;vertical-align:middle}
@@ -490,7 +492,7 @@ body{
       <div class="subtitle">代理控制台 · 本地 OpenAI 兼容链路</div>
     </div>
     <div class="spacer"></div>
-    <span class="ver-chip">UI <b>v2.3.0</b></span>
+    <span class="ver-chip">UI <b>v2.3.1</b></span>
     <span class="ver-chip">CORE <b>v1.0.9</b></span>
     <div class="state-pill idle" id="statePill"><span class="pdot"></span><span id="pillText">初始化</span></div>
   </header>
@@ -501,9 +503,10 @@ body{
     <button class="ibtn" id="avDismiss">知道了，不再提示</button>
   </div>
 
-  <!-- 版本更新提示（检查到新 Release 时显示） -->
+  <!-- 版本更新提示 + 下载统计（匿名：GitHub Release 下载量，不含用户信息） -->
   <div class="upd-banner" id="updBanner" style="display:none">
-    <span>⚡ 发现新版本 <b id="updVer">—</b>（当前 <b id="updCur">v2.3.0</b>）</span>
+    <span>⚡ <b id="updTitle">发现新版本</b> <b id="updVer">—</b>（当前 <b id="updCur">v2.3.1</b>）</span>
+    <span class="dl-count" id="dlCount"></span>
     <a id="updGo" href="#">前往下载 →</a>
   </div>
 
@@ -545,8 +548,8 @@ body{
         <div class="lat-row">
           <input class="lat-proxy" id="latProxy" placeholder="代理地址 · 留空自动探测本地代理" spellcheck="false" autocomplete="off">
           <button class="lat-btn" id="latTestBtn">测延迟</button>
-          <span class="lat-result" id="latResult"><span class="lat-idle">HTTP/HTTPS 延迟 · 走代理链路</span></span>
         </div>
+        <div class="lat-results" id="latResult"><span class="lat-idle">HTTP/HTTPS 延迟 · 走代理链路</span></div>
       </div>
     </section>
 
@@ -643,7 +646,7 @@ const demo = {
   async getState(){ return { running:demoRunning, external:false,
     phase: demoRunning?"running":"idle", port:"55990", host:"127.0.0.1",
     baseUrl:"http://127.0.0.1:55990/v1", uptime: demoRunning? Math.floor((Date.now()-demoStartAt)/1000):0,
-    autostart:false, apiKey:"", noticeDismissed:false, version:"v2.3.0", core:"v1.0.9", pid:12345 }; },
+    autostart:false, apiKey:"", noticeDismissed:false, version:"v2.3.1", core:"v1.0.9", pid:12345 }; },
   async start(){ demoRunning=true; demoStartAt=Date.now(); return {ok:true,msg:"模拟点火成功"}; },
   async stop(){ demoRunning=false; return {ok:true,msg:"模拟停堆"}; },
   async stats(){ if(!demoRunning) return {ok:false};
@@ -1038,12 +1041,12 @@ $("latTestBtn").onclick = async ()=>{
       const inf = r.inference;
       const cls = inf.ok ? (inf.ms < 1500 ? "ok" : inf.ms < 4000 ? "bad" : "err") : "err";
       const label = inf.ok ? inf.ms + "ms" : "✗";
-      html += `<span class="lat-t ${cls}"><b>${label}</b><em>模型推理</em></span>`;
+      html += `<div class="lat-t ${cls}"><b>${label}</b><em>模型推理</em></div>`;
     }
     r.targets.forEach(t=>{
       const cls = t.ok ? (t.ms < 200 ? "ok" : t.ms < 600 ? "bad" : "err") : "err";
       const label = t.ok ? t.ms + "ms" : "超时";
-      html += `<span class="lat-t ${cls}"><b>${label}</b><em>${t.name}</em></span>`;
+      html += `<div class="lat-t ${cls}"><b>${label}</b><em>${t.name}</em></div>`;
     });
     res.innerHTML = html;
     const okN = r.targets.filter(t=>t.ok).length;
@@ -1194,7 +1197,7 @@ $("modelRefBtn").onclick = ()=>openModal(REF_HTML);
 /* ---------------- 启动画面 ---------------- */
 (function boot(){
   const lines = [
-    ["COMMANDCODE PROXY DECK v2.3.0", 0],
+    ["COMMANDCODE PROXY DECK v2.3.1", 0],
     ["初始化神经链路 ......... <span class='ok'>OK</span>", 260],
     ["装载代理核心 v1.0.9 .... <span class='ok'>OK</span>", 300],
     ["装载全息界面 ........... <span class='ok'>OK</span>", 300],
@@ -1220,7 +1223,7 @@ pollState();
 if (!HAS_BRIDGE && qs.get("state")==="running") setTimeout(()=>toggleCore(), 300);
 
 /* ---------------- 版本更新检查 ---------------- */
-// 版本号比较：v2.3.0 > v2.2.0 > v2.1.0。返回 1 / 0 / -1（a 比 b 大 / 等 / 小）。
+// 版本号比较：v2.3.1 > v2.2.0 > v2.1.0。返回 1 / 0 / -1（a 比 b 大 / 等 / 小）。
 function verCmp(a, b){
   const pa = (a||"").replace(/^v/i,"").split(".").map(n=>parseInt(n,10)||0);
   const pb = (b||"").replace(/^v/i,"").split(".").map(n=>parseInt(n,10)||0);
@@ -1237,14 +1240,28 @@ function verCmp(a, b){
   try {
     const r = await call("CheckUpdate");
     if (!r || !r.ok || !r.latest) return;
-    const cur = "v2.3.0";
-    // 本地版本不低于远端 → 已是最新，不提示（修复：远端 v2.2.0 < 本地 v2.3.0 也提示的缺陷）
-    if (verCmp(cur, r.latest) >= 0) return;
-    $("updVer").textContent = r.latest;
-    $("updCur").textContent = cur;
-    $("updGo").onclick = (e)=>{ e.preventDefault(); call("Open", r.url); };
-    $("updBanner").style.display = "flex";
-    log("ok", "检测到新版本 " + r.latest + "（当前 " + cur + "）→ 可在顶部横幅前往下载");
+    const cur = "v2.3.1";
+    const hasUpdate = verCmp(cur, r.latest) < 0;
+    // 下载数（匿名统计：GitHub Release 下载量，不含任何用户信息）
+    const dl = r.downloads > 0 ? `已下载 ${r.downloads} 次` : "";
+    if (dl) $("dlCount").textContent = dl;
+    if (hasUpdate){
+      $("updTitle").textContent = "发现新版本";
+      $("updVer").textContent = r.latest;
+      $("updCur").textContent = cur;
+      $("updGo").textContent = "前往下载 →";
+      $("updGo").onclick = (e)=>{ e.preventDefault(); call("Open", r.url); };
+      $("updBanner").style.display = "flex";
+      log("ok", "检测到新版本 " + r.latest + "（当前 " + cur + "）" + (dl ? " · " + dl : "") + " → 可在顶部横幅前往下载");
+    } else if (dl){
+      // 无更新但显示下载统计（纯信息，不干扰）
+      $("updTitle").textContent = "当前版本";
+      $("updVer").textContent = cur;
+      $("updCur").textContent = "最新";
+      $("updGo").textContent = "查看更新 →";
+      $("updGo").onclick = (e)=>{ e.preventDefault(); call("Open", r.url); };
+      $("updBanner").style.display = "flex";
+    }
   } catch(e){ /* 静默 */ }
 })();
 /* ---------------- 悬停模型浮窗：官网费用详情 ---------------- */

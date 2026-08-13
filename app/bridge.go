@@ -435,13 +435,20 @@ func (a *app) bindAll(w webview.WebView) {
 		a.apiKey = key
 		return jsonOK("API Key 已保存")
 	})
-	// 版本更新检查：查 GitHub Releases 最新版（api.github.com，被墙时静默失败）。
+	// 版本更新检查 + 下载统计：查 GitHub Releases 全部版本，汇总所有 assets 的
+	// 累计下载量（匿名：GitHub 官方计数，不含任何用户信息）。
+	// 注意：不能只看 releases/latest——每次发布新版本 latest 会指向新版，
+	// 旧版下载量就"消失"了，用户会误以为没人用。累计下载才是真实反馈。
 	_ = w.Bind("ccCheckUpdate", func() string {
-		type rel struct {
-			TagName string `json:"tag_name"`
-			HTMLURL string `json:"html_url"`
+		type asset struct {
+			Download int `json:"download_count"`
 		}
-		resp, err := httpClientSlow.Get("https://api.github.com/repos/Amer-CN/command-code-proxy-tools/releases/latest")
+		type rel struct {
+			TagName string  `json:"tag_name"`
+			HTMLURL string  `json:"html_url"`
+			Assets  []asset `json:"assets"`
+		}
+		resp, err := httpClientSlow.Get("https://api.github.com/repos/Amer-CN/command-code-proxy-tools/releases?per_page=100")
 		if err != nil {
 			return `{"ok":false,"msg":"网络不可用"}`
 		}
@@ -449,11 +456,21 @@ func (a *app) bindAll(w webview.WebView) {
 		if resp.StatusCode != http.StatusOK {
 			return `{"ok":false,"msg":"HTTP "` + fmt.Sprintf("%d", resp.StatusCode) + `}`
 		}
-		var r rel
-		if json.NewDecoder(resp.Body).Decode(&r) != nil || r.TagName == "" {
+		var releases []rel
+		if json.NewDecoder(resp.Body).Decode(&releases) != nil || len(releases) == 0 {
 			return `{"ok":false,"msg":"解析失败"}`
 		}
-		b, _ := json.Marshal(map[string]any{"ok": true, "latest": r.TagName, "url": r.HTMLURL})
+		totalDownloads := 0
+		latest := releases[0] // GitHub 按时间倒序，第一个即最新
+		for _, rl := range releases {
+			for _, a := range rl.Assets {
+				totalDownloads += a.Download
+			}
+		}
+		b, _ := json.Marshal(map[string]any{
+			"ok": true, "latest": latest.TagName, "url": latest.HTMLURL,
+			"downloads": totalDownloads, // 所有版本累计下载量
+		})
 		return string(b)
 	})
 	_ = w.Bind("ccCalib", func(model, v string) string {
