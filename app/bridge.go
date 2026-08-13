@@ -286,10 +286,11 @@ var httpClient = &http.Client{Timeout: 1500 * time.Millisecond}
 // 1.5s 的默认超时不够（实测 ~3s），单独用 10s 超时。
 var httpClientSlow = &http.Client{Timeout: 10 * time.Second}
 
-// httpClientProbe 延迟测试专用：短超时 + 走环境代理（HTTP_PROXY/HTTPS_PROXY/ALL_PROXY）。
+// httpClientProbe 延迟测试专用：6s 超时 + 走环境代理（HTTP_PROXY/HTTPS_PROXY/ALL_PROXY）。
+// 梯子链路抖动大（实测 CommandCode 经代理 0.6-1.6s 波动），短超时易误判超时。
 // 注意：Go 默认读环境变量代理，不读 Windows 系统代理设置；用户若用 Clash 等
 // 系统级代理，请把 "打开系统代理" 与 "设置环境变量" 都打开，或手动设 ALL_PROXY。
-var httpClientProbe = &http.Client{Timeout: 2500 * time.Millisecond}
+var httpClientProbe = &http.Client{Timeout: 6 * time.Second}
 
 func httpGetSlow(url string) (string, bool) {
 	resp, err := httpClientSlow.Get(url)
@@ -540,7 +541,8 @@ func (a *app) bindAll(w webview.WebView) {
 				Transport: &http.Transport{Proxy: http.ProxyURL(pu)},
 			}
 		} else {
-			// 候选端口：Clash 混合端口 7890/7897、V2Ray 10808/10809、通用 8888/1080
+			// 候选端口：Clash 混合端口 7897/7890、V2Ray 10808/10809、通用 8888/1080
+			// 按"已验证优先"排序：把当前探测到的端口放最前，减少首次失败浪费
 			candidates := []string{
 				"http://127.0.0.1:7897", "http://127.0.0.1:7890",
 				"http://127.0.0.1:10809", "http://127.0.0.1:10808",
@@ -552,15 +554,17 @@ func (a *app) bindAll(w webview.WebView) {
 					continue
 				}
 				probe := &http.Client{
-					Timeout:   1200 * time.Millisecond,
+					Timeout:   4 * time.Second, // 梯子链路抖动大，留足余量
 					Transport: &http.Transport{Proxy: http.ProxyURL(pu)},
 				}
-				resp, err := probe.Get("https://api.commandcode.ai")
+				// 探测目标用国内站（百度）：链路抖动下，百度通 = 代理本身可用；
+				// CommandCode 慢/超时只是该链路慢，不代表代理不可用
+				resp, err := probe.Get("https://www.baidu.com")
 				if err == nil {
 					resp.Body.Close()
 					detected = c
 					client = &http.Client{
-						Timeout:   2500 * time.Millisecond,
+						Timeout:   6 * time.Second, // 探测到的代理，测目标时也留足超时
 						Transport: &http.Transport{Proxy: http.ProxyURL(pu)},
 					}
 					break
