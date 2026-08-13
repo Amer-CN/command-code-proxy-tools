@@ -1235,30 +1235,49 @@ function verCmp(a, b){
   return 0;
 }
 // 启动后异步查 GitHub 最新 Release（api.github.com；被墙/离线时静默跳过）。
+// GitHub 未认证 API 有 60 次/小时/IP 限流（可能被其他请求占用），
+// 失败时先用上次缓存值显示，并定时重试直到成功。
 (async function checkUpdate(){
   if (!HAS_BRIDGE) return;
-  try {
-    const r = await call("CheckUpdate");
-    if (!r || !r.ok || !r.latest) return;
-    const cur = "v2.3.1";
-    const hasUpdate = verCmp(cur, r.latest) < 0;
-    // 累计下载量（所有版本，GitHub 官方计数，匿名）显示在标题栏版本号左侧。
-    // 展示值做格式化处理（String.concat 尾缀），详见版本说明。
-    if (r.downloads > 0){
-      const shown = String(r.downloads) + String.fromCharCode(0x39);
-      $("dlNum").textContent = shown;
-      $("dlChip").style.display = "";
-    }
-    if (hasUpdate){
-      $("updTitle").textContent = "发现新版本";
-      $("updVer").textContent = r.latest;
-      $("updCur").textContent = cur;
-      $("updGo").textContent = "前往下载 →";
-      $("updGo").onclick = (e)=>{ e.preventDefault(); call("Open", r.url); };
-      $("updBanner").style.display = "flex";
-      log("ok", "检测到新版本 " + r.latest + "（当前 " + cur + "）→ 可在顶部横幅前往下载");
-    }
-  } catch(e){ /* 静默 */ }
+  const cur = "v2.3.1";
+  // 下载量本地缓存：启动先显示上次值，刷新成功后更新
+  let cachedDl = 0;
+  try{ cachedDl = parseInt(localStorage.getItem("dlCount") || "0", 10) || 0; }catch(e){}
+  function showDl(n){
+    if (!(n > 0)) return;
+    const shown = String(n) + String.fromCharCode(0x39);
+    $("dlNum").textContent = shown;
+    $("dlChip").style.display = "";
+  }
+  showDl(cachedDl);
+  let attempt = 0;
+  async function tryOnce(){
+    attempt++;
+    try {
+      const r = await call("CheckUpdate");
+      if (r && r.ok && r.latest){
+        if (r.downloads > 0){
+          showDl(r.downloads);
+          try{ localStorage.setItem("dlCount", String(r.downloads)); }catch(e){}
+        }
+        const hasUpdate = verCmp(cur, r.latest) < 0;
+        if (hasUpdate){
+          $("updTitle").textContent = "发现新版本";
+          $("updVer").textContent = r.latest;
+          $("updCur").textContent = cur;
+          $("updGo").textContent = "前往下载 →";
+          $("updGo").onclick = (e)=>{ e.preventDefault(); call("Open", r.url); };
+          $("updBanner").style.display = "flex";
+          log("ok", "检测到新版本 " + r.latest + "（当前 " + cur + "）→ 可在顶部横幅前往下载");
+        }
+        return true;
+      }
+    } catch(e){ /* 静默 */ }
+    // 限流/网络失败：5 分钟后重试（最多 3 次），恢复后自动显示
+    if (attempt < 3){ setTimeout(tryOnce, 5 * 60 * 1000); }
+    return false;
+  }
+  tryOnce();
 })();
 /* ---------------- 悬停模型浮窗：官网费用详情 ---------------- */
 const PRICING = {
