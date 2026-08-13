@@ -245,12 +245,13 @@ body{
 .stat-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:linear-gradient(180deg,var(--cyan),transparent)}
 .stat-card.vio::before{background:linear-gradient(180deg,var(--violet),transparent)}
 .stat-card.grn::before{background:linear-gradient(180deg,var(--green),transparent)}
-/* 模型消耗条 */
-.bars-wrap{flex:1;overflow-y:auto;min-height:0;padding-right:4px}
-.bar-row{display:grid;grid-template-columns:max-content minmax(80px,1fr) max-content;gap:10px;align-items:center;margin-bottom:7px;
-  animation:barin .5s var(--ease) both}
+/* 模型消耗条：容器级 grid，三列在所有行间共享列宽 → 每行轨道严格等长 */
+.bars-wrap{flex:1;overflow-y:auto;min-height:0;padding-right:4px;display:grid;
+  grid-template-columns:max-content minmax(80px,1fr) max-content;gap:7px 10px;align-items:center;align-content:start}
+.bar-row{display:contents}
+.bar-row>*{animation:barin .5s var(--ease) both}
 @keyframes barin{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:none}}
-.bar-row .name{font-family:var(--mono);font-size:12px;color:#c3d8f5;white-space:nowrap;line-height:1.35;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.bar-row .name{font-family:var(--mono);font-size:12px;color:#c3d8f5;white-space:nowrap;line-height:1.35;overflow:hidden;text-overflow:ellipsis;min-width:0;max-width:280px}
 .bar-track{height:8px;background:rgba(255,255,255,.04);border-radius:4px;overflow:hidden;position:relative;min-width:80px}
 .bar-fill{height:100%;border-radius:4px;width:0;position:relative;transition:width .9s var(--ease);
   background:linear-gradient(90deg,var(--cyan),var(--violet));box-shadow:0 0 10px rgba(0,229,255,.35)}
@@ -258,9 +259,9 @@ body{
   background:linear-gradient(100deg,transparent 20%,rgba(255,255,255,.35) 50%,transparent 80%);
   background-size:200% 100%;animation:shimmer 2.2s linear infinite}
 @keyframes shimmer{from{background-position:180% 0}to{background-position:-80% 0}}
-.bar-row .val{font-family:var(--mono);font-size:12px;color:var(--dim);text-align:right;flex:none}
+.bar-row .val{font-family:var(--mono);font-size:12px;color:var(--dim);text-align:right}
 .bar-row .sub2{display:block;font-size:12px;color:var(--dim);opacity:.7;margin-top:1px;white-space:nowrap}
-.bars-empty{color:var(--dim2);font-size:11px;letter-spacing:1px;padding:14px 4px;font-family:var(--mono)}
+.bars-empty{grid-column:1 / -1;color:var(--dim2);font-size:11px;letter-spacing:1px;padding:14px 4px;font-family:var(--mono)}
 
 /* ============ 模型矩阵 ============ */
 .models-panel{display:flex;flex-direction:column;min-height:0}
@@ -835,7 +836,6 @@ function renderBars(sorted){
   list.forEach((m,i)=>{
     const row = document.createElement("div");
     row.className = "bar-row";
-    row.style.animationDelay = (i*55)+"ms";
     row.title = m.name || ""; // 悬停显示完整模型名（配合名称换行，不会被截断）
     const c = vendorColor(m.name);
     const inT = m.inputTokens || m.in || 0, outT = m.outputTokens || m.out || 0;
@@ -851,6 +851,11 @@ function renderBars(sorted){
       <div class="bar-track"><div class="bar-fill" style="width:0;background:linear-gradient(90deg,${c},${c}88);box-shadow:0 0 10px ${c}55"></div></div>
       <span class="val">${m.sum ? fmt(m.sum) : "—"}<em class="sub2">${m.sum ? "↑"+fmt(inT)+" / ↓"+fmt(outT)+crPct : "未使用"}</em></span>`;
     row.querySelector(".name").textContent = m.name;
+    // display:contents 下 title 无效 → 把 title 放到名称和轨道元素上
+    row.querySelector(".name").title = m.name;
+    row.querySelector(".bar-track").title = m.name;
+    // 入场动画 delay 移到三个单元格（容器级 grid 下 .bar-row 无盒模型）
+    row.querySelectorAll(".name,.bar-track,.val").forEach(el=>{ el.style.animationDelay = (i*55)+"ms"; });
     wrap.appendChild(row);
     if (m.sum > 0){
       requestAnimationFrame(()=>requestAnimationFrame(()=>{ row.querySelector(".bar-fill").style.width = w + "%"; }));
