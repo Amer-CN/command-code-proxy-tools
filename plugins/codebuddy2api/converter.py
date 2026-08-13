@@ -83,8 +83,11 @@ def auth_dirs() -> list[Path]:
 def find_auth_file() -> Path | None:
     for d in auth_dirs():
         if d.is_dir():
-            for f in sorted(d.glob("*.info")):
-                return f
+            # 取最新登录的文件（按修改时间）——目录里可能残留多个历史登录态，
+            # 旧 token 可能已被吊销（服务端 401），必须用最新的。
+            files = list(d.glob("*.info"))
+            if files:
+                return max(files, key=lambda f: f.stat().st_mtime)
     return None
 
 

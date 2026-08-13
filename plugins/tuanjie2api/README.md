@@ -157,3 +157,7 @@ x-litellm-session-id: {random-uuid}
 ## License
 
 MIT
+
+---
+> 使用提示（CommandCodeProxyDeck 分发版实测 2026-08）：当前账号套餐下仅 `codely-vl` 正常输出正文，
+> `codely-basic/core/flash/air/GLM-5.2` 上游只返回思考内容（团结服务端行为，等待官方修复）。
