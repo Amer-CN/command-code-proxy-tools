@@ -159,5 +159,7 @@ x-litellm-session-id: {random-uuid}
 MIT
 
 ---
-> 使用提示（CommandCodeProxyDeck 分发版实测 2026-08）：当前账号套餐下仅 `codely-vl` 正常输出正文，
-> `codely-basic/core/flash/air/GLM-5.2` 上游只返回思考内容（团结服务端行为，等待官方修复）。
+> 使用提示（CommandCodeProxyDeck 分发版实测 2026-08）：全部模型可用（codely-basic/core/flash/air/vl、GLM-5.2）。
+> 注意：思考型模型会先输出大段 reasoning_content，请把 `max_tokens` 给足（建议 ≥2000），
+> 否则预算被思考占满、正文不会输出（不是故障）。模型 ID 以 `/v1/models` 返回为准
+> （如 "Core (GLM-5.2-MAX)" 的实际 ID 是 `GLM-5.2`）。
