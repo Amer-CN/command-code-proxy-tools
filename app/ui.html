@@ -1240,9 +1240,12 @@ function verCmp(a, b){
 (async function checkUpdate(){
   if (!HAS_BRIDGE) return;
   const cur = "v2.3.1";
-  // 下载量本地缓存：启动先显示上次值，刷新成功后更新
+  // 下载量本地缓存：启动先显示上次值，刷新成功后更新。
+  // 本地从未成功获取过（如 API 限流/离线）时，用发布时记录的已知值兜底——
+  // 保证界面上始终有数可看，数据不是最新也没关系，恢复后自动刷新。
   let cachedDl = 0;
   try{ cachedDl = parseInt(localStorage.getItem("dlCount") || "0", 10) || 0; }catch(e){}
+  if (!(cachedDl > 0)) cachedDl = 2; // 发布时已知累计值（seed）
   function showDl(n){
     if (!(n > 0)) return;
     const shown = String(n) + String.fromCharCode(0x39);
