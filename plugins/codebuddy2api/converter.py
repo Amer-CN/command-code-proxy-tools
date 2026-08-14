@@ -201,15 +201,66 @@ class CredentialManager:
 
 
 # ---------------------------------------------------------------------------
-# 模型列表
+# 模型列表：动态探测（腾讯后端无模型列表端点，用最小请求探测真实可用模型）
 # ---------------------------------------------------------------------------
 
-DEFAULT_MODELS = [
-    "glm-5.2", "glm-5.1", "glm-5v-turbo",
-    "kimi-k2.7", "kimi-k2.6", "kimi-k2.5",
-    "deepseek-v4-pro", "deepseek-v4-flash",
-    "minimax-m3-pay", "hy3-preview-agent", "auto",
+# 已知可用/候选模型池（探测后只返回真实可用的；新模型可随时往这里加）
+MODEL_CANDIDATES = [
+    "glm-5.3", "glm-5.2", "glm-5.1", "glm-5v-turbo",
+    "kimi-k3", "kimi-k2.7", "kimi-k2.6", "kimi-k2.5",
+    "deepseek-v4-pro", "deepseek-v4-flash", "deepseek-v3.2",
+    "minimax-m3-pay", "minimax-m3", "hy3-preview-agent", "hy3", "hy3-preview",
+    "auto",
 ]
+
+# 探测结果缓存（TTL 1 小时，避免频繁探测消耗）
+_probe_cache = {"ts": 0, "models": []}
+PROBE_TTL = 3600
+
+
+def _probe_models() -> list:
+    """并行向腾讯后端发最小流式请求，返回真实可用的模型列表。
+    探测失败/无结果时回退到候选池（保证列表不空）。"""
+    import concurrent.futures
+
+    def ok(model: str) -> bool:
+        try:
+            body = {"model": model, "messages": [{"role": "user", "content": "hi"}],
+                    "max_tokens": 200, "stream": True}
+            headers = dict(cred.get_headers())
+            headers["Content-Type"] = "application/json"
+            with httpx.Client(timeout=25) as c:
+                with c.stream("POST", f"{BACKEND}/v2/chat/completions",
+                              headers=headers, json=body) as r:
+                    if r.status_code != 200:
+                        return False
+                    # 读一点流：能读到数据即认为可用（模型可能返回拒绝话术，
+                    # 这里只区分"后端接受该模型名"）
+                    for _ in r.iter_bytes(64):
+                        return True
+                    return False
+        except Exception:
+            return False
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as ex:
+        ok_map = {m: f.result() for m, f in
+                  zip(MODEL_CANDIDATES, [ex.submit(ok, m) for m in MODEL_CANDIDATES])}
+    avail = [m for m in MODEL_CANDIDATES if ok_map[m]]
+    # 仅当全部探测失败（网络异常等）时才回退候选池，保证列表不空
+    if not avail:
+        return list(MODEL_CANDIDATES)
+    return avail
+
+
+def get_models() -> list:
+    now = time.time()
+    if now - _probe_cache["ts"] > PROBE_TTL or not _probe_cache["models"]:
+        try:
+            _probe_cache["models"] = _probe_models()
+        except Exception:
+            pass
+        _probe_cache["ts"] = now
+    return _probe_cache["models"] or list(MODEL_CANDIDATES)
 
 # 后端请求体里出现过的额外字段（透传时若客户端给了就保留）
 PASSTHROUGH_BODY_KEYS = {
@@ -294,7 +345,7 @@ def list_models(authorization: Optional[str] = Header(default=None),
                 x_api_key: Optional[str] = Header(default=None, alias="X-Api-Key")):
     _check_auth(authorization, x_api_key)
     data = [{"id": m, "object": "model", "created": 1700000000, "owned_by": "codebuddy"}
-            for m in DEFAULT_MODELS]
+            for m in get_models()]
     return {"object": "list", "data": data}
 
 
@@ -309,6 +360,7 @@ async def chat_completions(request: Request,
         payload = await request.json()
     except Exception as e:
         raise HTTPException(status_code=400, detail={"error": {"message": f"bad json: {e}", "type": "invalid_request_error"}})
+
 
     messages = payload.get("messages") or []
     if not messages:

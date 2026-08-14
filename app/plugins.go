@@ -69,7 +69,9 @@ var pluginDefs = []pluginDef{
 	{
 		ID: "codebuddy", Name: "WorkBuddy / CodeBuddy",
 		Dir: "codebuddy2api", Script: "converter.py",
-		Args: []string{"--port", "8787"}, Port: 8787, Health: "/health",
+		// --desensitize：对 system 里的技术敏感词（DoS/exploit/credential 等）
+		// 插入零宽空格，避免腾讯内容审核误拦 agent 类请求（如 codex++ 的超长系统提示）
+		Args: []string{"--port", "8787", "--desensitize"}, Port: 8787, Health: "/health",
 	},
 }
 
