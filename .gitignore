@@ -17,3 +17,4 @@ close_hint_dismissed.flag
 app.exe
 *.exe
 *.exe~
+.work/
