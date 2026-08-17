@@ -1,4 +1,4 @@
-// plugin_bindings.go —— 插件相关桥接绑定（完全开源，无激活/隐藏门）。
+// plugin_bindings.go —— 插件相关桥接绑定：列表 / 启动 / 停止 / 日志。
 package main
 
 import (

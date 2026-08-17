@@ -12,8 +12,8 @@ v2.1 起新增**官网权威统计**：直连 CommandCode 官方账单接口，�
 v2.3 起**模型目录与官方同步**：55 个模型全量展示（与 Available Models 一致），支持「全部 55 / Go 32」
 套餐一键切换；悬停模型名弹出官网单价；界面做节能与高分屏优化。
 
-v2.5 起**完全开源、开箱即用**：移除全部激活/授权机制，新增团结（Codely）/ WorkBuddy（CodeBuddy）/
-Notion AI / 灵犀四个内置插件视图，界面顶部常显视图切换栏，一键启用各自的后端订阅（登录对应桌面端即可）。
+v2.5 起新增**四大内置插件视图**：团结（Codely）/ WorkBuddy（CodeBuddy）/ Notion AI / 灵犀，
+界面顶部常显视图切换栏，一键启用各自的后端订阅（登录对应桌面端即可）。
 
 代理核心来自 [dev2k6/command-code-proxy-server](https://github.com/dev2k6/command-code-proxy-server)（上游 v1.0.9）。
 
@@ -53,7 +53,7 @@ python build.py
 
 ### 内置插件视图（v2.5+）
 
-程序顶部常显视图切换栏（COMMAND / 团结 / WORKBUDDY / NOTION / 灵犀），全部开箱即用、无需激活：
+程序顶部常显视图切换栏（COMMAND / 团结 / WORKBUDDY / NOTION / 灵犀），全部开箱即用：
 
 | 视图 | 后端 | 说明 |
 |---|---|---|
@@ -127,7 +127,7 @@ CommandCodeProxyDeck.exe（单个独立 exe，~15MB）
 
 ### SmartScreen 或杀软（火绒/360）提示？
 
-本程序是未签名的开源工具，首次运行 SmartScreen 选「更多信息 → 仍要运行」；「开机自启」会向启动文件夹写入脚本，杀软询问时选允许即可。代码完全开源，可自行审计后用 `构建EXE.bat` 重新编译。
+本程序未签名，首次运行 SmartScreen 选「更多信息 → 仍要运行」；「开机自启」会向启动文件夹写入脚本，杀软询问时选允许即可。代码随仓库公开，可自行审计后用 `python build.py` 重新编译。
 
 ### 提示缺少 WebView2 运行时？
 

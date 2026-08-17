@@ -1,5 +1,4 @@
 // plugin_modes.go —— 插件子模式：进程内直接运行对应插件服务（GUI 托管时 spawn 本模式）。
-// 本项目完全开源，无任何激活门：所有插件开箱即用。
 package main
 
 import (

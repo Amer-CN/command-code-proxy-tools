@@ -1199,7 +1199,7 @@ body{
       <div class="s-row"><span class="s-key">累计下载</span><b id="setDlVal">0</b>&nbsp;次</div>
       <div class="s-row"><span class="s-key">版本</span>UI <b id="setUiVer">—</b> / CORE <b id="setCoreVer">—</b></div>
       <div class="s-row"><span class="s-key">关于</span>
-        CommandCode Proxy Deck · 本地 OpenAI 兼容链路 · 完全免费开源，禁止盗卖/转卖 ·
+        CommandCode Proxy Deck · 本地 OpenAI 兼容链路 · 禁止盗卖/转卖 ·
         <a class="gh-link" id="setGithub">GitHub⌝</a>
       </div>
       <div class="s-row"><span class="s-key">更新</span>
@@ -2140,7 +2140,7 @@ document.addEventListener("keydown", e=>{
   if (e.key === "Escape" && curView !== "command") switchView("command");
 });
 
-// 启动即显示视图切换 tab + 启动插件轮询（不再有任何解锁/激活步骤）。
+// 启动即显示视图切换 tab + 启动插件轮询。
 function initTabs(){
   const vt = $("viewTabs");
   if (vt) vt.style.display = "";
@@ -2724,7 +2724,7 @@ async function loadPluginStats(V){
   }catch(e){}
 }
 
-// 运行时长跳动（视图激活期间每秒 +1，与主界面 pollState 的效果一致）
+// 运行时长跳动（当前视图每秒 +1，与主界面 pollState 的效果一致）
 setInterval(function(){
   Object.keys(PLUGIN_VIEWS).forEach(function(k){
     const V = PLUGIN_VIEWS[k];
@@ -2763,7 +2763,7 @@ async function loadPluginLog(V){
   }
 }
 
-/* 启动即显示视图切换 tab（全开源，无解锁/激活步骤）。 */
+/* 启动即显示视图切换 tab。 */
 // 延迟到 DOM 就绪后执行（早期 bind 调用在某些 WebView2 环境下会挂起）。
 if (document.readyState === "loading"){
   document.addEventListener("DOMContentLoaded", function(){ setTimeout(initTabs, 300); });

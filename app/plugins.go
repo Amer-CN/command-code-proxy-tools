@@ -11,8 +11,6 @@ import (
 )
 
 // ============ 插件托管（Python 服务收编 / Go 原生内置） ============
-// 本项目完全开源，无任何激活/隐藏门：所有插件开箱即用。
-
 type pluginDef struct {
 	ID     string   // 唯一标识
 	Name   string   // 显示名
@@ -151,7 +149,7 @@ func (a *app) pluginList() []map[string]any {
 
 // pluginStart 启动一个插件（独立常驻子进程，关 GUI 不影响）。
 // 原生插件 = spawn 本 exe 的 --plugin-<id> 子模式；Python 插件 = spawn 脚本。
-// 插件是隐藏的增值功能 → 机器码激活门只在这里（主代理不受限）。
+// 插件启动：原生插件 = spawn 本 exe 的 --plugin-<id> 子模式；Python 插件 = spawn 脚本。
 func (a *app) pluginStart(id string) error {
 	var d *pluginDef
 	for i := range pluginDefs {

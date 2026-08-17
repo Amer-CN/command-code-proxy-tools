@@ -50,7 +50,7 @@ var (
 
 // runCoreHeadless 在本进程内启动代理核心并阻塞（headless 后台模式）。
 // 这是"代理本体"：GUI 的 start 会 spawn 本模式作为子进程。
-// 本项目完全开源，无任何激活门。
+// 代理核心直接在本进程内运行。
 func runCoreHeadless(host, port, apiKey string) error {
 	// 未显式传 key 时，从 api-key.txt 读取（GUI 保存的 key 自动生效）。
 	if apiKey == "" {
