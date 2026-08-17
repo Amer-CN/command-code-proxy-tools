@@ -12,6 +12,9 @@ v2.1 起新增**官网权威统计**：直连 CommandCode 官方账单接口，�
 v2.3 起**模型目录与官方同步**：55 个模型全量展示（与 Available Models 一致），支持「全部 55 / Go 32」
 套餐一键切换；悬停模型名弹出官网单价；界面做节能与高分屏优化。
 
+v2.5 起**完全开源、开箱即用**：移除全部激活/授权机制，新增团结（Codely）/ WorkBuddy（CodeBuddy）/
+Notion AI / 灵犀四个内置插件视图，界面顶部常显视图切换栏，一键启用各自的后端订阅（登录对应桌面端即可）。
+
 代理核心来自 [dev2k6/command-code-proxy-server](https://github.com/dev2k6/command-code-proxy-server)（上游 v1.0.9）。
 
 ## 为什么需要它
@@ -24,7 +27,7 @@ v2.3 起**模型目录与官方同步**：55 个模型全量展示（与 Availab
 
 ```bat
 :: 1. 构建（需要本机装有 Go 1.22+，https://go.dev/dl/）
-构建EXE.bat
+python build.py
 
 :: 2. 得到 CommandCodeProxyDeck.exe，双击打开
 :: 3. 点击左侧「能量核心」点火（或按空格）
@@ -47,6 +50,20 @@ v2.3 起**模型目录与官方同步**：55 个模型全量展示（与 Availab
 | 模型矩阵 | 55 个模型按厂商分组（全部 55 / Go 32 可切换，悬停显示官网费用），点击复制 |
 | 运行日志 | 启停与错误事件流，分级着色；「开机自启」开关也在这里 |
 | 氛围 | 星空 + 透视网格地板 + 星云 + 扫描线背景，面板随鼠标 3D 视差，开机自检动画 |
+
+### 内置插件视图（v2.5+）
+
+程序顶部常显视图切换栏（COMMAND / 团结 / WORKBUDDY / NOTION / 灵犀），全部开箱即用、无需激活：
+
+| 视图 | 后端 | 说明 |
+|---|---|---|
+| 团结 | 团结大模型订阅（Codely） | 自动读取 `~/.codely-cli` 登录态，积分/配额实时监测 |
+| WorkBuddy | 腾讯 CodeBuddy 订阅 | 读取桌面端登录态，`cli_api_key` 自动兑换（1h 缓存）；内置零宽脱敏避免内容审核误拦 |
+| Notion AI | Notion AI 订阅 | 通过 CDP 自动读取桌面端 `token_v2`，无需手动复制令牌；配额/积分实时查询 |
+| 灵犀 | WPS 灵犀订阅 | 自动读取桌面端登录态，灵点余额/月额度实时查询 |
+
+每个插件视图与主界面同构：反应堆点火/停堆、健康检查延迟、积分/用量监测卡、模型矩阵、实时日志。
+插件以独立后台进程运行，关掉主窗口不中断。
 
 其他细节：深色沉浸式标题栏（Win10 1809+）、高 DPI 自适应、关窗自动优雅停堆、
 检测到开机自启的后台实例时自动接入监测（外部实例态，可一键停止）。
@@ -75,8 +92,12 @@ CommandCodeProxyDeck.exe（单个独立 exe，~15MB）
 ├─ app/                  WebView2 窗口 + JS 桥（github.com/webview/webview_go，纯 Go，无 CGO/DLL）
 │   ├─ ui.html           内嵌界面（go:embed，经 127.0.0.1 随机端口提供给 WebView2）
 │   ├─ bridge.go         启停控制 / 状态 / 统计透传 / 开机自启 / 剪贴板
+│   ├─ plugins.go        插件托管（启动/停止原生插件子进程）
+│   ├─ plugin_modes.go   插件子模式（--plugin-<id>，GUI 托管时 spawn）
+│   ├─ plugin_bindings.go  插件桥接绑定（列表/启停/日志）
 │   └─ platform_windows.go  深色标题栏 / DPI / 消息框
-└─ internal/proxy + internal/server   上游代理核心，进程内直接运行
+├─ internal/proxy + internal/server   上游代理核心，进程内直接运行
+└─ internal/{tuanjie,codebuddy,notion,lingxi}   四个插件后端服务（OpenAI 兼容端点）
 ```
 
 - 界面依赖系统自带的 **WebView2 运行时**（Win10/11 随系统/Edge 预装），所以工具体积不膨胀
