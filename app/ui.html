@@ -368,7 +368,73 @@ body{
 .log-line.warn .lv{color:var(--amber)}
 .log-line .lm{color:#c3d4ee;white-space:nowrap;flex:1;min-width:0}
 
-/*#DEV_CSS#*/
+
+/* 插件视图消耗 TOP 为多厂商配色（红/蓝/紫…），主界面 bar-fill 的 shimmer 高光
+   每 2.2s 扫过一次会把颜色反复冲淡——多色场景下即"红蓝闪烁"，插件视图关闭该装饰 */
+#viewTuanjie .bar-fill::after, #viewCodebuddy .bar-fill::after{ animation:none; display:none; }
+/* 轨道不透明化：星空 canvas 在 z-index:0 且视图容器无底色，半透明的填充尾段
+   会透出底层星光/流星（青白色划过 = 红条里闪蓝段），实底轨道彻底挡住 */
+#viewTuanjie .bar-track, #viewCodebuddy .bar-track{ background:#171a1f; }
+/* Notion 工作空间自绘下拉（原生 select 的 option 弹层在 WebView2 深色环境不渲染 */
+.nspace-dd{position:relative;flex:1;min-width:0;font-family:var(--mono);font-size:14px}
+.nspace-dd .dd-btn{width:100%;text-align:left;background:rgba(3,8,18,.65);border:1px solid var(--line);
+  border-radius:5px;padding:9px 12px;color:#7fe6ff;cursor:pointer;letter-spacing:.4px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--mono);font-size:14px}
+.nspace-dd .dd-btn:hover{border-color:var(--cyan)}
+.nspace-dd .dd-list{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:99;
+  background:rgba(6,12,26,.98);border:1px solid var(--line2);border-radius:6px;
+  box-shadow:0 10px 30px rgba(0,0,0,.6);max-height:220px;overflow-y:auto;display:none}
+.nspace-dd.open .dd-list{display:block}
+.nspace-dd .dd-item{padding:8px 12px;cursor:pointer;color:#c3d4ee;font-size:13px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nspace-dd .dd-item:hover{background:rgba(0,229,255,.08);color:#c9ecff}
+.nspace-dd .dd-item.cur{color:var(--green)}
+.nspace-dd .dd-empty{padding:8px 12px;color:var(--dim);font-size:12px}
+/* 字体与 COMMAND 完全统一：stat 卡数字回归基准 24px（删除历史 inline 15px）；
+   WorkBuddy 5 卡占 6 格，最后一卡跨两列补齐；长文本（包名/日期）自动缩字号防溢出 */
+#viewCodebuddy .stat-card:last-child{ grid-column: span 2; }
+#viewTuanjie .stat-card .v, #viewCodebuddy .stat-card .v{ overflow:hidden;text-overflow:ellipsis;max-width:100%;display:inline-block;vertical-align:bottom; }
+@media (max-width:1400px){
+  #viewTuanjie .stat-card .v, #viewCodebuddy .stat-card .v{ font-size:20px; }
+}
+/* ============ 全局视图切换器（固定悬浮，所有视图可见） ============ */
+.view-tabs{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:45;
+  display:flex;gap:6px;background:rgba(10,16,30,.92);border:1px solid var(--line2);
+  border-radius:8px;padding:5px;box-shadow:0 6px 24px rgba(0,0,0,.5);backdrop-filter:blur(6px)}
+.vtab{background:rgba(13,20,36,.8);border:1px solid var(--line2);color:var(--dim);
+  font-size:11px;letter-spacing:1.5px;padding:5px 14px;border-radius:6px;cursor:pointer;
+  font-family:var(--mono);transition:all .2s}
+.vtab:hover{color:#c9ecff;border-color:var(--cyan)}
+.vtab.active{color:var(--green);border-color:rgba(64,220,140,.5);background:rgba(64,220,140,.08)}
+/* 插件核心球（左栏状态球，运行时呼吸发光） */
+.plug-orb{width:86px;height:86px;border-radius:50%;margin:6px auto 12px;position:relative;
+  display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(circle at 50% 40%,#101a30,#0a1122 70%);
+  border:1px solid var(--line2);color:var(--dim2)}
+.plug-orb svg{width:30px;height:30px;stroke:currentColor}
+.plug-orb.on{color:var(--green);border-color:rgba(64,220,140,.6);
+  box-shadow:0 0 24px rgba(64,220,140,.35);animation:plugPulse 2.4s ease-in-out infinite}
+.plug-orb.vio.on{color:#b39bff;border-color:rgba(179,155,255,.6);box-shadow:0 0 24px rgba(179,155,255,.35)}
+@keyframes plugPulse{0%,100%{box-shadow:0 0 16px rgba(64,220,140,.25)}50%{box-shadow:0 0 32px rgba(64,220,140,.5)}}
+.plug-orb.vio.on{animation:plugPulseVio 2.4s ease-in-out infinite}
+@keyframes plugPulseVio{0%,100%{box-shadow:0 0 16px rgba(179,155,255,.25)}50%{box-shadow:0 0 32px rgba(179,155,255,.5)}}
+/* 插件模型参数表（插件视图内嵌 + 弹窗共用） */
+.pm-wrap .pm-tip{font-size:12px;color:#8fa3c8;margin:0 0 10px;line-height:1.7}
+.pm-tbl{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:8px}
+.pm-tbl th{color:#5f7398;font-weight:500;text-align:left;padding:5px 8px;border-bottom:1px solid #2a3654;white-space:nowrap}
+.pm-tbl td{padding:6px 8px;border-bottom:1px solid #1d2740;color:#c9d8f0;white-space:nowrap}
+.pm-tbl .pm-name{color:#c9ecff;font-weight:600;cursor:pointer}
+.pm-tbl .pm-name:hover{color:var(--green)}
+.pm-tbl .pm-note{white-space:normal;min-width:140px;color:#8fa3c8;font-size:11px}
+.pm-foot{font-size:11px;color:#5f7398;margin:0}
+.act-row{display:flex;gap:8px;margin:6px 0}
+.act-row input{flex:1;background:#0d1424;border:1px solid #2a3654;border-radius:6px;color:#c9ecff;
+  padding:8px 12px;font-size:13px;font-family:ui-monospace,Consolas,monospace}
+.act-row input:focus{outline:none;border-color:var(--green)}
+.act-msg{font-size:12px;min-height:18px;margin-top:6px;color:var(--dim)}
+.act-msg.ok{color:var(--green)}
+.act-msg.err{color:var(--red)}
+
 
 
 
@@ -640,22 +706,497 @@ body{
   </footer>
 </div>
 
-<!--#DEV_HTML#-->
+
+<!-- ============ 全局视图切换器（固定悬浮，任何视图下都可切换/返回） ============ -->
+<div class="view-tabs" id="viewTabs">
+  <button class="vtab active" data-view="command">COMMAND</button>
+  <button class="vtab" data-view="tuanjie">团结</button>
+  <button class="vtab" data-view="codebuddy">WORKBUDDY</button>
+  <button class="vtab" data-view="notion">NOTION</button>
+  <button class="vtab" data-view="lingxi">灵犀</button>
+</div>
+<!-- ============ 插件视图（与 COMMAND 完全同构：克隆主界面 DOM，仅换数据源） ============ -->
+<div class="app" id="viewTuanjie" style="display:none">
+  <header class="topbar">
+    <div class="logo">
+      <svg viewBox="0 0 100 100" fill="none">
+        <g class="hex"><polygon points="50,4 90,27 90,73 50,96 10,73 10,27" stroke="#8affd8" stroke-width="3"/></g>
+        <path d="M54 30 L40 54 L50 54 L46 70 L62 46 L51 46 Z" fill="#8affd8"/>
+      </svg>
+    </div>
+    <div class="title-wrap">
+      <div class="title">团结 COWORK · CODELY</div>
+      <div class="subtitle">团结大模型订阅 · 本地 OpenAI 兼容链路</div>
+    </div>
+    <div class="spacer"></div>
+    <span class="ver-chip" title="插件标识">PLUGIN <b>TUANJIE</b></span>
+    <button class="gear-btn" title="设置" onclick="openSettings()" aria-label="设置">⚙</button>
+    <div class="state-pill idle" id="tjPill"><span class="pdot"></span><span id="tjPillText">待命</span></div>
+  </header>
+
+  <!-- 主区（与主界面同构） -->
+  <main class="deck">
+    <!-- 插件核心（同反应堆） -->
+    <section class="panel core-panel tilt">
+      <div class="p-head"><span class="tick"></span><h2>代理核心</h2><span class="en">PROXY CORE</span></div>
+      <div class="p-body reactor-zone" id="tjZone">
+        <div class="reactor" id="tjReactor" title="点击 启动 / 停止">
+          <div class="holo-base"></div>
+          <div class="ring ring-a"></div><div class="ring ring-b"></div>
+          <div class="ring ring-c"></div><div class="ring ring-d"></div>
+          <div class="orbit o1"><i></i></div><div class="orbit o2"><i></i></div>
+          <div class="core">
+            <div class="core-ring"></div>
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round">
+              <path d="M12 3v8"/><path d="M6.3 6.5a8 8 0 1 0 11.4 0"/>
+            </svg>
+          </div>
+        </div>
+        <div class="status-big" id="tjStatus">插件待命</div>
+        <div class="status-sub" id="tjStatusSub">PLUGIN STANDBY</div>
+        <div class="endpoint" id="tjEndpoint" title="点击复制 Base URL">http://127.0.0.1:8788/v1</div>
+        <div class="meta-row">
+          <div class="meta"><div class="v" id="tjUptime">--:--:--</div><div class="k">运行时长</div></div>
+          <div class="meta"><div class="v">8788</div><div class="k">监听端口</div></div>
+          <div class="meta"><div class="v" id="tjModels">—</div><div class="k">模型数</div></div>
+        </div>
+        <div class="eq" id="tjEq"></div>
+        <div class="hint-line">点击核心 启动/停止插件<br>cli_api_key 自动兑换 · 1h 缓存 · 过期自动重换</div>
+        <div class="lat-row">
+          <input class="lat-proxy" id="tjLatProxy" placeholder="健康检查 · /health 延迟" readonly>
+          <button class="lat-btn" id="tjLatBtn">测延迟</button>
+        </div>
+        <div class="lat-results" id="tjLatResult"><span class="lat-idle">插件链路健康检查延迟</span></div>
+      </div>
+    </section>
+
+    <!-- 中列（链路配置 + 链路监测） -->
+    <div class="mid-col">
+      <section class="panel tilt">
+        <div class="p-head"><span class="tick"></span><h2>链路配置</h2><span class="en">UPLINK</span></div>
+        <div class="p-body">
+          <div class="field-row">
+            <span class="f-label">接口地址<span class="en">BASE URL</span></span>
+            <input class="holo-input" id="tjBaseUrl" readonly value="http://127.0.0.1:8788/v1" title="点击复制">
+            <button class="ibtn" id="tjCopyUrl">复制</button>
+          </div>
+          <div class="field-row">
+            <span class="f-label">API 密钥<span class="en">API KEY</span></span>
+            <div class="key-wrap">
+              <input class="holo-input" value="无需密钥 · 客户端任意值即可" readonly>
+            </div>
+            <button class="ibtn">—</button>
+          </div>
+          <div class="field-row"><span class="f-label">登录态<span class="en">OAUTH</span></span><input class="holo-input" value="~/.codely-cli/oauth_creds.json 自动读取" readonly><button class="ibtn">—</button></div>
+        </div>
+      </section>
+
+      <section class="panel telemetry tilt">
+        <div class="p-head"><span class="tick"></span><h2>链路监测</h2><span class="en">TELEMETRY</span>
+          <button class="ibtn" id="tjRefresh" style="margin-left:10px">↻ 刷新</button></div>
+        <div class="p-body">
+          <div class="stat-grid">
+            <div class="stat-card"><div class="k">积分总额<span class="en">BUDGET</span></div><div><span class="v" id="tjStBudget">—</span><span class="u">积分</span></div><div class="sub" id="tjStBudgetSub">今日+赠送+有效</div></div>
+            <div class="stat-card vio"><div class="k">今日已用<span class="en">USED</span></div><div><span class="v" id="tjStSpent">—</span><span class="u">积分</span></div><div class="sub" id="tjStSpentSub">今日配额</div></div>
+            <div class="stat-card grn"><div class="k">今日剩余<span class="en">LEFT</span></div><div><span class="v" id="tjStLeft">—</span><span class="u">积分</span></div><div class="sub" id="tjStLeftSub">24:00 重置</div></div>
+            <div class="stat-card amb"><div class="k">重置时间<span class="en">RESET</span></div><div><span class="v" id="tjStReset">—</span></div><div class="sub" id="tjStResetSub">北京时间 · 每日</div></div>
+            <div class="stat-card vio"><div class="k">月度积分<span class="en">MONTH</span></div><div><span class="v" id="tjStTopModel">—</span></div><div class="sub" id="tjStTopModelSub">积分+token+次数</div></div>
+            <div class="stat-card grn"><div class="k">健康检查<span class="en">HEALTH</span></div><div><span class="v" id="tjStHealth">—</span><span class="u">ms</span></div><div class="sub" id="tjStHealthSub">本地回环</div></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- 模型矩阵（厂商分组，同主界面） -->
+    <section class="panel models-panel tilt">
+      <div class="p-head"><span class="tick"></span><h2>模型矩阵</h2><span class="en" id="tjModelCount">OFFLINE</span></div>
+      <div class="p-body" id="tjModelList"><div class="models-empty">// 启动插件后自动拉取</div></div>
+    </section>
+  </main>
+
+  <!-- 底部双栏（插件日志 + 模型参数） -->
+  <footer class="deck-bottom">
+    <section class="panel console-panel tilt">
+      <div class="console-head">
+        <h2>插件日志</h2><span class="en">PLUGIN LOG</span>
+        <div class="console-actions">
+          <button class="cbtn" id="tjClearLog">清空</button>
+        </div>
+      </div>
+      <div class="log-stream" id="tjLog"></div>
+    </section>
+    <section class="panel tilt">
+      <div class="console-head"><span class="tick"></span><h2>各模型消耗 TOP</h2><span class="en">MODEL USAGE</span></div>
+      <div class="bars-wrap" id="tjBars"><div class="bars-empty">// 插件启动后自动统计流经数据</div></div>
+    </section>
+  </footer>
+</div>
+
+<!-- ============ 插件视图（与 COMMAND 完全同构：克隆主界面 DOM，仅换数据源） ============ -->
+<div class="app" id="viewCodebuddy" style="display:none">
+  <header class="topbar">
+    <div class="logo">
+      <svg viewBox="0 0 100 100" fill="none">
+        <g class="hex"><polygon points="50,4 90,27 90,73 50,96 10,73 10,27" stroke="#b39bff" stroke-width="3"/></g>
+        <path d="M54 30 L40 54 L50 54 L46 70 L62 46 L51 46 Z" fill="#8affd8"/>
+      </svg>
+    </div>
+    <div class="title-wrap">
+      <div class="title">WORKBUDDY · CODEBUDDY</div>
+      <div class="subtitle">腾讯 CodeBuddy 订阅 · 本地 OpenAI 兼容链路</div>
+    </div>
+    <div class="spacer"></div>
+    <span class="ver-chip" title="插件标识">PLUGIN <b>CODEBUDDY</b></span>
+    <button class="gear-btn" title="设置" onclick="openSettings()" aria-label="设置">⚙</button>
+    <div class="state-pill idle" id="cbPill"><span class="pdot"></span><span id="cbPillText">待命</span></div>
+  </header>
+
+  <!-- 主区（与主界面同构） -->
+  <main class="deck">
+    <!-- 插件核心（同反应堆） -->
+    <section class="panel core-panel tilt">
+      <div class="p-head"><span class="tick"></span><h2>代理核心</h2><span class="en">PROXY CORE</span></div>
+      <div class="p-body reactor-zone" id="cbZone">
+        <div class="reactor" id="cbReactor" title="点击 启动 / 停止">
+          <div class="holo-base"></div>
+          <div class="ring ring-a"></div><div class="ring ring-b"></div>
+          <div class="ring ring-c"></div><div class="ring ring-d"></div>
+          <div class="orbit o1"><i></i></div><div class="orbit o2"><i></i></div>
+          <div class="core">
+            <div class="core-ring"></div>
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round">
+              <path d="M12 3v8"/><path d="M6.3 6.5a8 8 0 1 0 11.4 0"/>
+            </svg>
+          </div>
+        </div>
+        <div class="status-big" id="cbStatus">插件待命</div>
+        <div class="status-sub" id="cbStatusSub">PLUGIN STANDBY</div>
+        <div class="endpoint" id="cbEndpoint" title="点击复制 Base URL">http://127.0.0.1:8787/v1</div>
+        <div class="meta-row">
+          <div class="meta"><div class="v" id="cbUptime">--:--:--</div><div class="k">运行时长</div></div>
+          <div class="meta"><div class="v">8787</div><div class="k">监听端口</div></div>
+          <div class="meta"><div class="v" id="cbModels">—</div><div class="k">模型数</div></div>
+        </div>
+        <div class="eq" id="cbEq"></div>
+        <div class="hint-line">点击核心 启动/停止插件<br>模型动态探测 · 首次约 20 秒</div>
+        <div class="lat-row">
+          <input class="lat-proxy" id="cbLatProxy" placeholder="健康检查 · /health 延迟" readonly>
+          <button class="lat-btn" id="cbLatBtn">测延迟</button>
+        </div>
+        <div class="lat-results" id="cbLatResult"><span class="lat-idle">插件链路健康检查延迟</span></div>
+      </div>
+    </section>
+
+    <!-- 中列（链路配置 + 链路监测） -->
+    <div class="mid-col">
+      <section class="panel tilt">
+        <div class="p-head"><span class="tick"></span><h2>链路配置</h2><span class="en">UPLINK</span></div>
+        <div class="p-body">
+          <div class="field-row">
+            <span class="f-label">接口地址<span class="en">BASE URL</span></span>
+            <input class="holo-input" id="cbBaseUrl" readonly value="http://127.0.0.1:8787/v1" title="点击复制">
+            <button class="ibtn" id="cbCopyUrl">复制</button>
+          </div>
+          <div class="field-row">
+            <span class="f-label">API 密钥<span class="en">API KEY</span></span>
+            <div class="key-wrap">
+              <input class="holo-input" value="无需密钥 · 客户端任意值即可" readonly>
+            </div>
+            <button class="ibtn">—</button>
+          </div>
+          <div class="field-row"><span class="f-label">脱敏<span class="en">FILTER</span></span><input class="holo-input" value="已开启 · system/tools 零宽脱敏防审核误拦" readonly><button class="ibtn">—</button></div>
+        </div>
+      </section>
+
+      <section class="panel telemetry tilt">
+        <div class="p-head"><span class="tick"></span><h2>链路监测</h2><span class="en">TELEMETRY</span>
+          <button class="ibtn" id="cbRefresh" style="margin-left:10px">↻ 刷新</button></div>
+        <div class="p-body">
+          <div class="stat-grid">
+            <div class="stat-card"><div class="k">可用模型</div><div><span class="v" id="cbStModels">—</span><span class="u">个</span></div><div class="sub" id="cbStModelsSub">实时拉取</div></div>
+            <div class="stat-card vio"><div class="k">积分<span class="en">CREDITS</span></div><div><span class="v" id="cbStPoints">—</span></div><div class="sub" id="cbStPointsSub">—</div></div>
+            <div class="stat-card grn"><div class="k">月额度<span class="en">MONTHLY</span></div><div><span class="v" id="cbStBudget">—</span></div><div class="sub" id="cbStBudgetSub">—</div></div>
+            <div class="stat-card vio"><div class="k">状态<span class="en">STATUS</span></div><div><span class="v" id="cbStSpent">—</span></div><div class="sub" id="cbStSpentSub">—</div></div>
+            <div class="stat-card grn"><div class="k">健康检查<span class="en">HEALTH</span></div><div><span class="v" id="cbStHealth">—</span><span class="u">ms</span></div><div class="sub" id="cbStHealthSub">本地回环</div></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- 模型矩阵（厂商分组，同主界面） -->
+    <section class="panel models-panel tilt">
+      <div class="p-head"><span class="tick"></span><h2>模型矩阵</h2><span class="en" id="cbModelCount">OFFLINE</span></div>
+      <div class="p-body" id="cbModelList"><div class="models-empty">// 启动插件后自动拉取</div></div>
+    </section>
+  </main>
+
+  <!-- 底部双栏（插件日志 + 模型参数） -->
+  <footer class="deck-bottom">
+    <section class="panel console-panel tilt">
+      <div class="console-head">
+        <h2>插件日志</h2><span class="en">PLUGIN LOG</span>
+        <div class="console-actions">
+          <button class="cbtn" id="cbClearLog">清空</button>
+        </div>
+      </div>
+      <div class="log-stream" id="cbLog"></div>
+    </section>
+    <section class="panel tilt">
+      <div class="console-head"><span class="tick"></span><h2>各模型消耗 TOP</h2><span class="en">MODEL USAGE</span></div>
+      <div class="bars-wrap" id="cbBars"><div class="bars-empty">// 插件启动后自动统计流经数据</div></div>
+    </section>
+  </footer>
+</div>
+
+<!-- ============ Notion 视图（同构克隆，数据源 8789） ============ -->
+<div class="app" id="viewNotion" style="display:none">
+  <header class="topbar">
+    <div class="logo">
+      <svg viewBox="0 0 100 100" fill="none">
+        <g class="hex"><polygon points="50,4 90,27 90,73 50,96 10,73 10,27" stroke="#b39bff" stroke-width="3"/></g>
+        <path d="M54 30 L40 54 L50 54 L46 70 L62 46 L51 46 Z" fill="#8affd8"/>
+      </svg>
+    </div>
+    <div class="title-wrap">
+      <div class="title">NOTION · NOTION AI</div>
+      <div class="subtitle">Notion AI 订阅 · 本地 OpenAI 兼容链路 · 只读审查推荐</div>
+    </div>
+    <div class="spacer"></div>
+    <span class="ver-chip" title="插件标识">PLUGIN <b>CODEBUDDY</b></span>
+    <button class="gear-btn" title="设置" onclick="openSettings()" aria-label="设置">⚙</button>
+    <div class="state-pill idle" id="noPill"><span class="pdot"></span><span id="noPillText">待命</span></div>
+  </header>
+
+  <!-- 主区（与主界面同构） -->
+  <main class="deck">
+    <!-- 插件核心（同反应堆） -->
+    <section class="panel core-panel tilt">
+      <div class="p-head"><span class="tick"></span><h2>代理核心</h2><span class="en">PROXY CORE</span></div>
+      <div class="p-body reactor-zone" id="noZone">
+        <div class="reactor" id="noReactor" title="点击 启动 / 停止">
+          <div class="holo-base"></div>
+          <div class="ring ring-a"></div><div class="ring ring-b"></div>
+          <div class="ring ring-c"></div><div class="ring ring-d"></div>
+          <div class="orbit o1"><i></i></div><div class="orbit o2"><i></i></div>
+          <div class="core">
+            <div class="core-ring"></div>
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round">
+              <path d="M12 3v8"/><path d="M6.3 6.5a8 8 0 1 0 11.4 0"/>
+            </svg>
+          </div>
+        </div>
+        <div class="status-big" id="noStatus">插件待命</div>
+        <div class="status-sub" id="noStatusSub">PLUGIN STANDBY</div>
+        <div class="endpoint" id="noEndpoint" title="点击复制 Base URL">http://127.0.0.1:8789/v1</div>
+        <div class="meta-row">
+          <div class="meta"><div class="v" id="noUptime">--:--:--</div><div class="k">运行时长</div></div>
+          <div class="meta"><div class="v">8787</div><div class="k">监听端口</div></div>
+          <div class="meta"><div class="v" id="noModels">—</div><div class="k">模型数</div></div>
+        </div>
+        <div class="eq" id="noEq"></div>
+        <div class="hint-line">点击核心 启动/停止插件<br>凭据 CDP 自动读取 · 首次启动 Notion 约 15 秒</div>
+        <div class="lat-row">
+          <input class="lat-proxy" id="noLatProxy" placeholder="健康检查 · /health 延迟" readonly>
+          <button class="lat-btn" id="noLatBtn">测延迟</button>
+        </div>
+        <div class="lat-results" id="noLatResult"><span class="lat-idle">插件链路健康检查延迟</span></div>
+      </div>
+    </section>
+
+    <!-- 中列（链路配置 + 链路监测） -->
+    <div class="mid-col">
+      <section class="panel tilt">
+        <div class="p-head"><span class="tick"></span><h2>链路配置</h2><span class="en">UPLINK</span></div>
+        <div class="p-body">
+          <div class="field-row">
+            <span class="f-label">接口地址<span class="en">BASE URL</span></span>
+            <input class="holo-input" id="noBaseUrl" readonly value="http://127.0.0.1:8789/v1" title="点击复制">
+            <button class="ibtn" id="noCopyUrl">复制</button>
+          </div>
+          <div class="field-row">
+            <span class="f-label">API 密钥<span class="en">API KEY</span></span>
+            <div class="key-wrap">
+              <input class="holo-input" value="无需密钥 · 客户端任意值即可" readonly>
+            </div>
+            <button class="ibtn">—</button>
+          </div>
+          <div class="field-row"><span class="f-label">工作空间<span class="en">SPACE</span></span><div class="nspace-dd" id="noSpaceDD"><button class="dd-btn" id="noSpaceBtn2" type="button">点「⟳」拉取空间列表</button><div class="dd-list" id="noSpaceList"></div></div><button class="ibtn" id="noSpaceBtn">切换</button><button class="ibtn" id="noSpaceRefresh" title="刷新工作空间列表（新增空间后点此拉取）" style="margin-left:6px">⟳</button></div>
+          <div class="field-row"><span class="f-label">令牌<span class="en">TOKEN</span></span><input class="holo-input" id="noTokenStatus" value="自动读取 Notion 桌面端登录态" readonly><button class="ibtn" id="noRefreshToken">刷新令牌</button></div>
+        </div>
+      </section>
+
+      <section class="panel telemetry tilt">
+        <div class="p-head"><span class="tick"></span><h2>链路监测</h2><span class="en">TELEMETRY</span>
+          <button class="ibtn" id="noRefresh" style="margin-left:10px">↻ 刷新</button></div>
+        <div class="p-body">
+          <div class="stat-grid">
+            <div class="stat-card"><div class="k">可用模型</div><div><span class="v" id="noStModels">—</span><span class="u">个</span></div><div class="sub" id="noStModelsSub">实时拉取</div></div>
+            <div class="stat-card vio"><div class="k">6h 额度<span class="en">WINDOW</span></div><div><span class="v" id="noStPoints">—</span></div><div class="sub" id="noStPointsSub">—</div></div>
+            <div class="stat-card grn"><div class="k">月额度<span class="en">MONTHLY</span></div><div><span class="v" id="noStBudget">—</span></div><div class="sub" id="noStBudgetSub">—</div></div>
+            <div class="stat-card vio"><div class="k">状态<span class="en">STATUS</span></div><div><span class="v" id="noStSpent">—</span></div><div class="sub" id="noStSpentSub">—</div></div>
+            <div class="stat-card grn"><div class="k">健康检查<span class="en">HEALTH</span></div><div><span class="v" id="noStHealth">—</span><span class="u">ms</span></div><div class="sub" id="noStHealthSub">本地回环</div></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- 模型矩阵（厂商分组，同主界面） -->
+    <section class="panel models-panel tilt">
+      <div class="p-head"><span class="tick"></span><h2>模型矩阵</h2><span class="en" id="noModelCount">OFFLINE</span></div>
+      <div class="p-body" id="noModelList"><div class="models-empty">// 启动插件后自动拉取</div></div>
+    </section>
+  </main>
+
+  <!-- 底部双栏（插件日志 + 模型参数） -->
+  <footer class="deck-bottom">
+    <section class="panel console-panel tilt">
+      <div class="console-head">
+        <h2>插件日志</h2><span class="en">PLUGIN LOG</span>
+        <div class="console-actions">
+          <button class="cbtn" id="noClearLog">清空</button>
+        </div>
+      </div>
+      <div class="log-stream" id="noLog"></div>
+    </section>
+    <section class="panel tilt">
+      <div class="console-head"><span class="tick"></span><h2>各模型消耗 TOP</h2><span class="en">MODEL USAGE</span></div>
+      <div class="bars-wrap" id="noBars"><div class="bars-empty">// 插件启动后自动统计流经数据</div></div>
+    </section>
+  </footer>
+</div>
+
+<!-- ============ 灵犀视图（8790） ============ -->
+<!-- ============ 灵犀 视图（同构克隆，数据源 8789） ============ -->
+<div class="app" id="viewLingxi" style="display:none">
+  <header class="topbar">
+    <div class="logo">
+      <svg viewBox="0 0 100 100" fill="none">
+        <g class="hex"><polygon points="50,4 90,27 90,73 50,96 10,73 10,27" stroke="#b39bff" stroke-width="3"/></g>
+        <path d="M54 30 L40 54 L50 54 L46 70 L62 46 L51 46 Z" fill="#8affd8"/>
+      </svg>
+    </div>
+    <div class="title-wrap">
+      <div class="title">灵犀 · WPS LINGXI</div>
+      <div class="subtitle">WPS 灵犀订阅 · 本地 OpenAI 兼容链路 · 9 模型</div>
+    </div>
+    <div class="spacer"></div>
+    <span class="ver-chip" title="插件标识">PLUGIN <b>CODEBUDDY</b></span>
+    <button class="gear-btn" title="设置" onclick="openSettings()" aria-label="设置">⚙</button>
+    <div class="state-pill idle" id="lxPill"><span class="pdot"></span><span id="lxPillText">待命</span></div>
+  </header>
+
+  <!-- 主区（与主界面同构） -->
+  <main class="deck">
+    <!-- 插件核心（同反应堆） -->
+    <section class="panel core-panel tilt">
+      <div class="p-head"><span class="tick"></span><h2>代理核心</h2><span class="en">PROXY CORE</span></div>
+      <div class="p-body reactor-zone" id="lxZone">
+        <div class="reactor" id="lxReactor" title="点击 启动 / 停止">
+          <div class="holo-base"></div>
+          <div class="ring ring-a"></div><div class="ring ring-b"></div>
+          <div class="ring ring-c"></div><div class="ring ring-d"></div>
+          <div class="orbit o1"><i></i></div><div class="orbit o2"><i></i></div>
+          <div class="core">
+            <div class="core-ring"></div>
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round">
+              <path d="M12 3v8"/><path d="M6.3 6.5a8 8 0 1 0 11.4 0"/>
+            </svg>
+          </div>
+        </div>
+        <div class="status-big" id="lxStatus">系统待命</div>
+        <div class="status-sub" id="lxStatusSub">PLUGIN STANDBY</div>
+        <div class="endpoint" id="lxEndpoint" title="点击复制 Base URL">http://127.0.0.1:8790/v1</div>
+        <div class="meta-row">
+          <div class="meta"><div class="v" id="lxUptime">--:--:--</div><div class="k">运行时长</div></div>
+          <div class="meta"><div class="v">8787</div><div class="k">监听端口</div></div>
+          <div class="meta"><div class="v" id="lxModels">—</div><div class="k">模型数</div></div>
+        </div>
+        <div class="eq" id="lxEq"></div>
+        <div class="hint-line">点击核心 启动/停止插件<br>凭据 CDP 自动读取 · 首次启动 灵犀 约 15 秒</div>
+        <div class="lat-row">
+          <input class="lat-proxy" id="lxLatProxy" placeholder="健康检查 · /health 延迟" readonly>
+          <button class="lat-btn" id="lxLatBtn">测延迟</button>
+        </div>
+        <div class="lat-results" id="lxLatResult"><span class="lat-idle">插件链路健康检查延迟</span></div>
+      </div>
+    </section>
+
+    <!-- 中列（链路配置 + 链路监测） -->
+    <div class="mid-col">
+      <section class="panel tilt">
+        <div class="p-head"><span class="tick"></span><h2>链路配置</h2><span class="en">UPLINK</span></div>
+        <div class="p-body">
+          <div class="field-row">
+            <span class="f-label">接口地址<span class="en">BASE URL</span></span>
+            <input class="holo-input" id="lxBaseUrl" readonly value="http://127.0.0.1:8790/v1" title="点击复制">
+            <button class="ibtn" id="lxCopyUrl">复制</button>
+          </div>
+          <div class="field-row">
+            <span class="f-label">API 密钥<span class="en">API KEY</span></span>
+            <div class="key-wrap">
+              <input class="holo-input" value="无需密钥 · 客户端任意值即可" readonly>
+            </div>
+            <button class="ibtn">—</button>
+          </div>
+          <div class="field-row"><span class="f-label">套餐模式<span class="en">PLAN</span></span><input class="holo-input" id="lxPlanStatus" value="Pro / Max · 灵点制 · 单空间" readonly><button class="ibtn" id="lxPlanRefresh" title="刷新灵点余额与套餐">⟳</button></div>
+          <div class="field-row"><span class="f-label">令牌<span class="en">TOKEN</span></span><input class="holo-input" id="lxTokenStatus" value="自动读取 灵犀 桌面端登录态" readonly><button class="ibtn" id="lxRefreshToken">刷新令牌</button></div>
+        </div>
+      </section>
+
+      <section class="panel telemetry tilt">
+        <div class="p-head"><span class="tick"></span><h2>链路监测</h2><span class="en">TELEMETRY</span>
+          <button class="ibtn" id="lxRefresh" style="margin-left:10px">↻ 刷新</button></div>
+        <div class="p-body">
+          <div class="stat-grid">
+            <div class="stat-card"><div class="k">可用模型</div><div><span class="v" id="lxStModels">—</span><span class="u">个</span></div><div class="sub" id="lxStModelsSub">实时拉取</div></div>
+            <div class="stat-card vio"><div class="k">灵点余额<span class="en">CREDITS</span></div><div><span class="v" id="lxStPoints">—</span></div><div class="sub" id="lxStPointsSub">—</div></div>
+            <div class="stat-card grn"><div class="k">月额度<span class="en">MONTHLY</span></div><div><span class="v" id="lxStBudget">—</span></div><div class="sub" id="lxStBudgetSub">—</div></div>
+            <div class="stat-card vio"><div class="k">状态<span class="en">STATUS</span></div><div><span class="v" id="lxStSpent">—</span></div><div class="sub" id="lxStSpentSub">—</div></div>
+            <div class="stat-card grn"><div class="k">健康检查<span class="en">HEALTH</span></div><div><span class="v" id="lxStHealth">—</span><span class="u">ms</span></div><div class="sub" id="lxStHealthSub">本地回环</div></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- 模型矩阵（厂商分组，同主界面） -->
+    <section class="panel models-panel tilt">
+      <div class="p-head"><span class="tick"></span><h2>模型矩阵</h2><span class="en" id="lxModelCount">OFFLINE</span></div>
+      <div class="p-body" id="lxModelList"><div class="models-empty">// 启动插件后自动拉取</div></div>
+    </section>
+  </main>
+
+  <!-- 底部双栏（插件日志 + 模型参数） -->
+  <footer class="deck-bottom">
+    <section class="panel console-panel tilt">
+      <div class="console-head">
+        <h2>插件日志</h2><span class="en">PLUGIN LOG</span>
+        <div class="console-actions">
+          <button class="cbtn" id="lxClearLog">清空</button>
+        </div>
+      </div>
+      <div class="log-stream" id="lxLog"></div>
+    </section>
+    <section class="panel tilt">
+      <div class="console-head"><span class="tick"></span><h2>各模型消耗 TOP</h2><span class="en">MODEL USAGE</span></div>
+      <div class="bars-wrap" id="lxBars"><div class="bars-empty">// 插件启动后自动统计流经数据</div></div>
+    </section>
+  </footer>
+</div>
+
 
 <div id="toasts"></div>
 <div id="modalRoot"></div>
 
-<!-- 设置面板（统一收纳 版本/下载/关于/开发者模式/检查更新） -->
+<!-- 设置面板（统一收纳 版本/下载/关于/检查更新） -->
 <div class="modal-mask" id="settingsMask" style="display:none">
   <div class="modal-box">
     <button class="modal-close" id="settingsClose" title="关闭">✕</button>
     <h3><span class="tick"></span>设置 · SETTINGS</h3>
     <div class="m-body">
-      <div class="s-row"><span class="s-key">开发者模式</span><b id="setDevVal">未开启</b></div>
       <div class="s-row"><span class="s-key">累计下载</span><b id="setDlVal">0</b>&nbsp;次</div>
       <div class="s-row"><span class="s-key">版本</span>UI <b id="setUiVer">—</b> / CORE <b id="setCoreVer">—</b></div>
       <div class="s-row"><span class="s-key">关于</span>
-        CommandCode Proxy Deck · 本地 OpenAI 兼容链路 ·
+        CommandCode Proxy Deck · 本地 OpenAI 兼容链路 · 完全免费开源，禁止盗卖/转卖 ·
         <a class="gh-link" id="setGithub">GitHub⌝</a>
       </div>
       <div class="s-row"><span class="s-key">更新</span>
@@ -1220,14 +1761,17 @@ $("modelRefBtn").onclick = ()=>openModal(REF_HTML);
 
 /* ---------------- 设置面板 ---------------- */
 const UI_CUR = "v2.4.0";
+// 累计下载显示补"9"：与历史版本顶栏 chip 的视觉一致（真实数字末位补 9）。
+const pad9 = n => (n > 0 ? String(n) + "9" : "0");
+let _chkRetries = 0;  // checkUpdateNow 的"checking"重试计数（每次点击重置）
 function openSettings(){
   const mask = $("settingsMask");
-  $("setDevVal").textContent = (typeof devUnlocked === "function" && devUnlocked()) ? "已开启" : "未开启";
-  // 累计下载：优先读最近一次 CheckUpdate 结果，未获取过则回退 localStorage。
+  // 累计下载：优先读最近一次 CheckUpdate 结果，未获取过则回退 localStorage，最后 seed 2。
   const upd = window._UPDATE || {};
   let dl = upd.downloads > 0 ? upd.downloads : 0;
   if (!(dl > 0)){ try{ dl = parseInt(localStorage.getItem("dlCount") || "0", 10) || 0; }catch(e){} }
-  $("setDlVal").textContent = dl;
+  if (!(dl > 0)) dl = 2;  // 发布时已知累计值（seed）
+  $("setDlVal").textContent = pad9(dl);
   $("setUpdRes").textContent = "";
   mask.style.display = "flex";
   // 版本：实时读取 Go 常量，保持与主界面一致
@@ -1243,18 +1787,27 @@ function closeSettings(){ $("settingsMask").style.display = "none"; }
 $("settingsClose").onclick = closeSettings;
 $("settingsMask").onclick = e=>{ if (e.target.classList.contains("modal-mask")) closeSettings(); };
 $("setGithub").onclick = ()=> call("Open", "https://github.com/Amer-CN/command-code-proxy-tools");
-$("setCheckBtn").onclick = checkUpdateNow;
+$("setCheckBtn").onclick = ()=>{ _chkRetries = 0; checkUpdateNow(); };
 async function checkUpdateNow(){
   const res = $("setUpdRes");
   res.textContent = "检查中…";
   let r = null;
   try{ r = await call("CheckUpdate"); }catch(e){ r = null; }
   if (!r || !r.ok){
-    if (r && r.msg === "checking"){ setTimeout(checkUpdateNow, 2000); return; }
+    // 后台仍在拉取（"checking" 占位）→ 2 秒后重试，最多 3 次，超过给明确提示不再无限转圈。
+    if (r && r.msg === "checking"){
+      _chkRetries++;
+      if (_chkRetries < 4){ setTimeout(checkUpdateNow, 2000); return; }
+      res.textContent = "暂时无法连接 GitHub（网络/代理问题）· 稍后再试";
+      toast("err", "检查新版本失败", "无法连接 GitHub");
+      _chkRetries = 0;
+      return;
+    }
     res.textContent = "检查失败：" + ((r && r.msg) || "未知错误");
     toast("err", "检查新版本失败", (r && r.msg) || "");
     return;
   }
+  _chkRetries = 0;
   const latest = r.latest || null;
   res.textContent = "";
   if (!latest){
@@ -1264,7 +1817,7 @@ async function checkUpdateNow(){
     return;
   }
   window._UPDATE = { latest: latest, url: r.url || "", downloads: r.downloads > 0 ? r.downloads : ((window._UPDATE && window._UPDATE.downloads) || 0) };
-  if (r.downloads > 0){ try{ localStorage.setItem("dlCount", String(r.downloads)); }catch(e){} $("setDlVal").textContent = r.downloads; }
+  if (r.downloads > 0){ try{ localStorage.setItem("dlCount", String(r.downloads)); }catch(e){} $("setDlVal").textContent = pad9(r.downloads); }
   if (verCmp(UI_CUR, latest) < 0){
     showUpdResult(latest, r.url || "");
   } else {
@@ -1564,7 +2117,657 @@ function hideModelTip(){
   if (el) el.style.display = "none";
 }
 
-//#DEV_JS#</script>
+
+/* ---------------- 视图切换（全开源，无门禁） ---------------- */
+// 当前视图：command（默认）/ tuanjie / codebuddy / notion / lingxi
+let curView = "command";
+function switchView(v){
+  curView = v;
+  $("viewCommand").style.display = v === "command" ? "" : "none";
+  $("viewTuanjie").style.display = v === "tuanjie" ? "" : "none";
+  $("viewCodebuddy").style.display = v === "codebuddy" ? "" : "none";
+  $("viewNotion").style.display = v === "notion" ? "" : "none";
+  $("viewLingxi").style.display = v === "lingxi" ? "" : "none";
+  document.querySelectorAll(".vtab").forEach(t=>t.classList.toggle("active", t.dataset.view === v));
+  if (v !== "command") refreshPluginView(v);
+}
+document.querySelectorAll(".vtab").forEach(t=>{ t.onclick = ()=>switchView(t.dataset.view); });
+// ESC 快速返回 COMMAND 视图
+document.addEventListener("keydown", e=>{
+  if (e.key === "Escape" && curView !== "command") switchView("command");
+});
+
+// 启动即显示视图切换 tab + 启动插件轮询（不再有任何解锁/激活步骤）。
+function initTabs(){
+  const vt = $("viewTabs");
+  if (vt) vt.style.display = "";
+  if (!window._pluginPoll){
+    window._pluginPoll = setInterval(()=>{
+      if (curView !== "command") refreshPluginView(curView);
+    }, 3000);
+  }
+}
+
+// ============ 插件视图渲染（与主界面同构：复用 PH 状态机样式 / eq / chips） ============
+const PLUGIN_VIEWS = {
+  tuanjie:   { pfx: "tj", id: "tuanjie",   port: 8788, name: "团结",
+               phases: { idle:{big:"系统待命",sub:"CORE STANDBY"},
+                         starting:{big:"点火序列",sub:"IGNITION SEQUENCE"},
+                         running:{big:"核心在线",sub:"LINK ONLINE · STREAMING"},
+                         stopping:{big:"停止序列",sub:"CORE SHUTDOWN"} } },
+  lingxi:    { pfx: "lx", id: "lingxi", port: 8790, name: "灵犀",
+               phases: { idle:{big:"系统待命",sub:"CORE STANDBY"},
+                         starting:{big:"点火序列",sub:"IGNITION SEQUENCE"},
+                         running:{big:"核心在线",sub:"LINK ONLINE · STREAMING"},
+                         stopping:{big:"停止序列",sub:"CORE SHUTDOWN"} } },
+  notion:    { pfx: "no", id: "notion", port: 8789, name: "Notion",
+               phases: { idle:{big:"系统待命",sub:"CORE STANDBY"},
+                         starting:{big:"点火序列",sub:"IGNITION SEQUENCE"},
+                         running:{big:"核心在线",sub:"LINK ONLINE · STREAMING"},
+                         stopping:{big:"停止序列",sub:"CORE SHUTDOWN"} } },
+  codebuddy: { pfx: "cb", id: "codebuddy", port: 8787, name: "WorkBuddy",
+               phases: { idle:{big:"系统待命",sub:"CORE STANDBY"},
+                         starting:{big:"点火序列",sub:"IGNITION SEQUENCE · 探测模型中"},
+                         running:{big:"核心在线",sub:"LINK ONLINE · STREAMING"},
+                         stopping:{big:"停止序列",sub:"CORE SHUTDOWN"} } },
+};
+
+// pSet：安全设置插件视图元素文本（元素可能因视图布局差异不存在）
+function pSet(V, id, val){ const el = $(V.pfx+id); if (el) el.textContent = val; }
+
+// 插件状态机（对应主界面 setPhase 的视觉切换）
+function setPluginPhase(V, p){
+  if (V.phase === p) return;
+  V.phase = p;
+  const cfg = V.phases[p] || V.phases.idle;
+  const sb = $(V.pfx+"Status");
+  sb.style.opacity = 0;
+  setTimeout(()=>{ sb.textContent = cfg.big; pSet(V, "StatusSub", cfg.sub); sb.style.opacity = 1; }, 160);
+  sb.className = "status-big " + (p==="running" ? "glow-run" : (p==="starting"||p==="stopping") ? "glow-st" : "");
+  const pill = p === "running" ? ["running","运行中"] : p === "starting" ? ["starting","启动中"] : p === "stopping" ? ["stopping","停止中"] : ["idle","待命"];
+  $(V.pfx+"Pill").className = "state-pill " + pill[0];
+  $(V.pfx+"PillText").textContent = pill[1];
+  $(V.pfx+"Reactor").className = "reactor " + (p === "running" ? "run" : (p === "starting" || p === "stopping") ? "st" : "");
+  $(V.pfx+"Zone").className = "p-body reactor-zone" + (p === "running" ? " running" : "");
+  $(V.pfx+"Eq").className = "eq" + (p === "running" ? " eq-on" : "");
+}
+
+async function refreshPluginView(view){
+  const V = PLUGIN_VIEWS[view]; if (!V) return;
+  const list = await call("PluginList");
+  const p = Array.isArray(list) ? list.find(x=>x.id === V.id) : null;
+  const running = !!(p && p.healthy);
+  const starting = !!(p && p.running && !p.healthy);
+  setPluginPhase(V, running ? "running" : starting ? "starting" : "idle");
+  if (p && p.lastErr) plog(V, "err", p.lastErr);
+
+  if (running){
+    loadPluginModels(V);
+    loadPluginMeta(V);
+    loadPluginStats(V);
+    loadPluginLog(V);
+    if (view === "notion") loadNotionToken(V);
+    if (view === "lingxi") loadLingxiQuota(V);
+  } else {
+    $(V.pfx+"ModelCount").textContent = "OFFLINE";
+    $(V.pfx+"ModelList").innerHTML = '<div class="models-empty">// 启动插件后自动拉取</div>';
+    pSet(V, "StModels", "—");
+    pSet(V, "StHealth", "—");
+    ["StBudget","StSpent","StLeft","StReset","StTopModel","StPoints"].forEach(function(k){
+      const el = $(V.pfx+k); if (el) el.textContent = "—";
+    });
+    $(V.pfx+"Uptime").textContent = "--:--:--";
+    $(V.pfx+"Bars").innerHTML = '<div class="bars-empty">// 插件启动后自动统计流经数据</div>';
+    V.uptime = null; V.logLoaded = false;
+    // 关键：清掉防闪烁缓存——否则插件重启后模型列表没变会命中缓存，
+    // 矩阵/监测卡永远停在"启动后自动拉取"提示不渲染
+    V.lastModels = null; V.lastMeta = null; V.metaMap = null; V.modelIds = null; V.lastBarsKey = null; V.barRows = null;
+  }
+}
+
+// 插件日志（带级别，复用主界面 log-line 样式）
+function plog(V, level, msg){ logInto($(V.pfx+"Log"), level, String(msg)); }
+
+// 冲击波（复用主界面样式，任意 reactor 元素）
+function shockwaveAt(el){
+  const w = document.createElement("div");
+  w.className = "shockwave";
+  el.appendChild(w);
+  setTimeout(()=>w.remove(), 750);
+}
+
+// 各插件交互绑定：反应堆点击启停 / endpoint 复制 / 清空日志 / 刷新 / 健康延迟
+Object.keys(PLUGIN_VIEWS).forEach(function(k){
+  const V = PLUGIN_VIEWS[k];
+  V.phase = "idle";
+  // eq 条初始化（同主界面 26 根，默认暂停，运行时恢复）
+  (function(){ const box = $(V.pfx+"Eq");
+    for (let i=0;i<26;i++){ const b=document.createElement("i");
+      b.style.animationDelay=(i*47%930)+"ms"; b.style.animationDuration=(640+(i*97%520))+"ms";
+      box.appendChild(b); } })();
+
+  const doToggle = async ()=>{
+    if (V.phase === "starting" || V.phase === "stopping") return;
+    shockwaveAt($(V.pfx+"Reactor"));
+    if (V.phase === "running"){
+      setPluginPhase(V, "stopping"); plog(V, "sys", "停止插件…");
+      const r = await call("PluginStop", V.id);
+      if (r && r.ok){ plog(V, "ok", "插件已停止"); }
+      else plog(V, "err", "停止失败: " + ((r&&r.msg)||""));
+    } else {
+      setPluginPhase(V, "starting");
+      plog(V, "sys", (k==="codebuddy" ? "启动插件 · 探测模型中（约 20 秒）…" : "启动插件…"));
+      const r = await call("PluginStart", V.id);
+      if (r && r.ok){ plog(V, "ok", "插件已启动"); }
+      else { plog(V, "err", "启动失败: " + ((r&&r.msg)||"未知")); setPluginPhase(V, "idle"); }
+    }
+    refreshPluginView(k);
+  };
+  $(V.pfx+"Reactor").onclick = doToggle;
+  $(V.pfx+"Endpoint").onclick = function(){ copyText($(V.pfx+"Endpoint").textContent, "Base URL"); };
+  $(V.pfx+"BaseUrl").onclick = function(){ copyText($(V.pfx+"BaseUrl").value, "Base URL"); };
+  $(V.pfx+"CopyUrl").onclick = function(){ copyText($(V.pfx+"BaseUrl").value, "Base URL"); };
+  $(V.pfx+"ClearLog").onclick = function(){ $(V.pfx+"Log").innerHTML=""; plog(V, "sys", "日志已清空"); };
+  $(V.pfx+"Refresh").onclick = function(){ refreshPluginView(k); plog(V, "sys", "手动刷新链路监测"); };
+  $(V.pfx+"LatBtn").onclick = async function(){
+    const btn = $(V.pfx+"LatBtn"); btn.disabled = true; btn.textContent = "测试中…";
+    const t0 = performance.now();
+    try{
+      await fetch("http://127.0.0.1:"+V.port+"/health");
+      const ms = Math.round(performance.now()-t0);
+      $(V.pfx+"LatResult").innerHTML = '<span class="lat-ok">/health · '+ms+'ms</span>';
+      plog(V, "net", "健康检查延迟 "+ms+"ms");
+    }catch(e){
+      $(V.pfx+"LatResult").innerHTML = '<span class="lat-bad">不可达（插件未启动？）</span>';
+    }
+    btn.disabled = false; btn.textContent = "测延迟";
+  };
+});
+
+// 模型矩阵（厂商/系列分组 + chips，同主界面逻辑）
+const PLUGIN_VENDOR_COLORS = {"glm":"#ff6b9d","kimi":"#b06bff","deepseek":"#4d8dff","minimax":"#ffb300","hy3":"#00ffa3","codely":"#00d4ff","auto":"#7c9dff","claude":"#ff9d6b","openai":"#6bff9d","gemini":"#6bd9ff","xai":"#d9ff6b"};
+function pluginVendorOf(id){
+  const s = (id.split("/")[0]||"").toLowerCase();
+  // 无斜杠短名按前缀归组：先精确词表（claude 系/opengpt/google/xai 等），再兜底
+  const m = s.match(/^(glm|kimi|deepseek|minimax|hy3|codely|auto)/);
+  if (m) return m[1];
+  const cm = s.match(/^(opus|sonnet|haiku|fable|claude)/);
+  if (cm) return "claude";
+  const gm = s.match(/^gpt/);
+  if (gm) return "openai";
+  const gem = s.match(/^gemini/);
+  if (gem) return "gemini";
+  const xm = s.match(/^(grok|spacexai)/);
+  if (xm) return "xai";
+  return s;
+}
+// Notion：刷新令牌按钮（CDP 自动读桌面端登录态；换账号后点一下即可）
+(function(){
+  const btn = $("noRefreshToken");
+  if (!btn) return;
+  btn.onclick = async function(){
+    btn.disabled = true; btn.textContent = "读取中…";
+    try{
+      const r = await (await fetch("http://127.0.0.1:8789/refresh-token", {method:"POST"})).json();
+      $("noTokenStatus").value = r.ok ? "令牌已刷新" : ("失败：" + (r.msg||""));
+      if (r.ok){ plog(PLUGIN_VIEWS.notion, "ok", "Notion 令牌已自动刷新"); refreshPluginView("notion"); }
+      else plog(PLUGIN_VIEWS.notion, "err", "刷新失败: " + (r.msg||""));
+    }catch(e){
+      $("noTokenStatus").value = "插件未启动";
+    }
+    btn.disabled = false; btn.textContent = "刷新令牌";
+  };
+})();
+// 灵犀：套餐行 ⟳（刷新额度）
+(function(){
+  const pb = $("lxPlanRefresh");
+  if (pb) pb.onclick = function(){ loadLingxiQuota(PLUGIN_VIEWS.lingxi); plog(PLUGIN_VIEWS.lingxi, "sys", "刷新灵点余额…"); };
+})();
+// 灵犀：刷新令牌 + 额度卡（/quota）
+(function(){
+  const btn = $("lxRefreshToken");
+  if (btn) btn.onclick = async function(){
+    btn.disabled = true; btn.textContent = "读取中…";
+    try{
+      const r = await (await fetch("http://127.0.0.1:8790/refresh-token", {method:"POST"})).json();
+      $("lxTokenStatus").value = r.ok ? "令牌已刷新" : ("失败：" + (r.msg||""));
+      if (r.ok){ plog(PLUGIN_VIEWS.lingxi, "ok", "灵犀令牌已刷新"); refreshPluginView("lingxi"); }
+      else plog(PLUGIN_VIEWS.lingxi, "err", "刷新失败: " + (r.msg||""));
+    }catch(e){ $("lxTokenStatus").value = "插件未启动"; }
+    btn.disabled = false; btn.textContent = "刷新令牌";
+  };
+})();
+async function loadLingxiQuota(V){
+  try{
+    const q = await (await fetch("http://127.0.0.1:8790/quota")).json();
+    if (q.source === "live"){
+      const credits = q.credits != null ? q.credits : "—";
+      const packs = q.packs || [];
+      const near = packs.slice().sort((a,b)=>(a.expire<b.expire?-1:1))[0];
+      pSet(V, "StPoints", String(credits));
+      pSet(V, "StPointsSub", "灵点余额 · " + packs.length + " 个包");
+      pSet(V, "StBudget", near ? String(near.balance) : "—");
+      pSet(V, "StBudgetSub", near ? ("最近过期 " + near.expire + " · 优先消耗") : "—");
+    } else {
+      pSet(V, "StPoints", "未连接");
+      pSet(V, "StPointsSub", "点「刷新令牌」");
+    }
+  }catch(e){}
+}
+
+// Notion 令牌状态 + 工作空间下拉（/quota + /spaces）
+// 工作空间状态（自绘下拉；须在 loadNotionToken 之前声明——const 不提升）
+const nspaceState = { list: [], picked: null };
+
+async function loadNotionToken(V){
+  // AI 额度（6h 窗口 + 月周期，getCreditRateLimitStatus 官方数据）
+  try{
+    const q = await (await fetch("http://127.0.0.1:8789/quota")).json();
+    if (q && q.windowLimit > 0 && !q.err){
+      const wPct = q.windowLimit > 0 ? Math.round(q.windowUsed / q.windowLimit * 100) : 0;
+      const pPct = q.periodLimit > 0 ? Math.round(q.periodUsed / q.periodLimit * 100) : 0;
+      const hrs = Math.floor(q.resetsInSeconds / 3600), mins = Math.floor(q.resetsInSeconds % 3600 / 60);
+      const pEnd = q.periodEndMs ? new Date(q.periodEndMs) : null;
+      pSet(V, "StPoints", q.windowUsed + "/" + q.windowLimit);
+      pSet(V, "StPointsSub", "6h 窗口 · 已用 " + wPct + "% · " + hrs + "h" + mins + "m 后重置");
+      pSet(V, "StBudget", q.periodUsed + "/" + q.periodLimit);
+      pSet(V, "StBudgetSub", "月额度 · 已用 " + pPct + "%" + (pEnd ? " · " + (pEnd.getMonth()+1) + "/" + pEnd.getDate() + " 重置" : ""));
+    } else {
+      pSet(V, "StPoints", "未连接");
+      pSet(V, "StPointsSub", q && q.err ? String(q.err).slice(0, 20) : "点「刷新令牌」");
+    }
+  }catch(e){
+    pSet(V, "StPoints", "未连接");
+    pSet(V, "StPointsSub", "插件未启动");
+  }
+  // 工作空间列表：仅首次进入时装载（getSpaces 要过外网，自动轮询会卡视图）。
+  // 新增了工作空间 → 点「切换」按钮旁的下拉刷新（loadNotionSpaces 手动拉取）
+  try{
+    if (!nspaceState.list.length) loadNotionSpaces();
+  }catch(e){}
+}
+// 渲染自绘下拉
+function renderNotionSpaces(){
+  const dd = $("noSpaceDD"), list = $("noSpaceList"), btn = $("noSpaceBtn2");
+  if (!dd || !list || !btn) return;
+  const cur = nspaceState.list.find(function(x){ return x.current; });
+  const active = nspaceState.picked || (cur ? cur.id : null);
+  list.innerHTML = "";
+  if (!nspaceState.list.length){
+    list.innerHTML = '<div class="dd-empty">点「⟳」拉取空间列表</div>';
+  } else {
+    nspaceState.list.forEach(function(sp){
+      const it = document.createElement("div");
+      it.className = "dd-item" + (sp.id === active ? " cur" : "");
+      it.textContent = sp.name + "（" + (sp.plan||"?") + "）" + (sp.current ? " ✓当前" : "");
+      it.onclick = function(){
+        nspaceState.picked = sp.id;
+        btn.textContent = it.textContent;
+        dd.classList.remove("open");
+      };
+      list.appendChild(it);
+    });
+  }
+  const curItem = nspaceState.list.find(function(x){ return x.id === active; });
+  btn.textContent = curItem ? (curItem.name + "（" + (curItem.plan||"?") + "）" + (curItem.current ? " ✓当前" : "")) : "点「⟳」拉取空间列表";
+}
+// 拉取空间列表（手动：⟳ 或切换成功后）
+async function loadNotionSpaces(){
+  const btn2 = $("noSpaceBtn2");
+  if (btn2){ btn2.disabled = true; btn2.textContent = "拉取中…"; }
+  try{
+    const r = await (await fetch("http://127.0.0.1:8789/spaces")).json();
+    if (r.ok && Array.isArray(r.spaces) && r.spaces.length){
+      nspaceState.list = r.spaces;
+      renderNotionSpaces();
+      plog(PLUGIN_VIEWS.notion, "net", "工作空间列表已刷新 · " + r.spaces.length + " 个");
+    } else {
+      plog(PLUGIN_VIEWS.notion, "err", "工作空间列表拉取失败: " + ((r && r.msg) || "未知"));
+    }
+  }catch(e){
+    plog(PLUGIN_VIEWS.notion, "err", "工作空间列表拉取失败（插件未启动？）");
+  }
+  if (btn2) btn2.disabled = false;
+}
+// ⟳ 刷新 + 下拉开合
+(function(){
+  const rb = $("noSpaceRefresh");
+  if (rb) rb.onclick = function(){ loadNotionSpaces(); };
+  const dd = $("noSpaceDD"), btn2 = $("noSpaceBtn2");
+  if (dd && btn2){
+    btn2.onclick = function(e){ e.stopPropagation(); dd.classList.toggle("open"); };
+    document.addEventListener("click", function(e){
+      if (!dd.contains(e.target)) dd.classList.remove("open");
+    });
+  }
+})();
+// 工作空间切换按钮
+(function(){
+  const btn = $("noSpaceBtn");
+  if (!btn) return;
+  btn.onclick = async function(){
+    const sid = nspaceState.picked || (nspaceState.list.find(function(x){ return x.current; }) || {}).id;
+    if (!sid){ plog(PLUGIN_VIEWS.notion, "warn", "先点「⟳」拉取并选择工作空间"); return; }
+    btn.disabled = true; btn.textContent = "切换中…";
+    try{
+      const r = await (await fetch("http://127.0.0.1:8789/space/select", {
+        method: "POST", headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({spaceId: sid})})).json();
+      plog(PLUGIN_VIEWS.notion, r.ok ? "ok" : "err", (r.ok ? "已切换工作空间：" : "切换失败：") + (r.msg||""));
+      if (r.ok){ loadNotionToken(PLUGIN_VIEWS.notion); loadNotionSpaces(); }
+    }catch(e){ plog(PLUGIN_VIEWS.notion, "err", "切换请求失败（插件未启动？）"); }
+    btn.disabled = false; btn.textContent = "切换";
+  };
+})();
+async function loadPluginModels(V){
+  try{
+    const r = await fetch("http://127.0.0.1:"+V.port+"/v1/models");
+    const d = await r.json();
+    const ids = (d.data||[]).map(function(m){ return m.id; });
+    // 空列表兜底：显示提示而不是无限重建空矩阵
+    if (!ids.length){
+      $(V.pfx+"ModelCount").textContent = "0 MODELS";
+      $(V.pfx+"ModelList").innerHTML = '<div class="models-empty">// 后端暂无可调用模型（预算超限？）</div>';
+      V.lastModels = null;
+      return;
+    }
+    // 增量更新：列表没变不重建 DOM（否则每次轮询 chips 动画重播 → 闪烁）
+    if (V.lastModels && V.lastModels === ids.join("")){
+      return;
+    }
+    V.lastModels = ids.join("");
+    $(V.pfx+"ModelCount").textContent = ids.length + " MODELS";
+    $(V.pfx+"Models").textContent = ids.length;
+    pSet(V, "StModels", ids.length);
+    pSet(V, "StModelsSub", ids.length + " 个真实可用");
+    const groups = {};
+    ids.forEach(function(id){ const v = pluginVendorOf(id); (groups[v] = groups[v]||[]).push(id); });
+    const box = $(V.pfx+"ModelList");
+    box.innerHTML = "";
+    let i = 0;
+    Object.keys(groups).sort().forEach(function(v){
+      const g = document.createElement("div"); g.className = "vendor-g";
+      g.innerHTML = '<div class="vendor-h" style="color:'+(PLUGIN_VENDOR_COLORS[v]||'#5f7398')+'">'+v.toUpperCase()+'</div>';
+      const chips = document.createElement("div"); chips.className = "chips";
+      groups[v].forEach(function(id){
+        const c = document.createElement("span");
+        c.className = "chip"; c.style.animationDelay = (i++*28)+"ms";
+        c.textContent = id;
+        c.onclick = function(){ copyText(id); document.querySelectorAll(".chip.copied").forEach(function(x){ x.classList.remove("copied"); }); c.classList.add("copied"); };
+        c.onmouseenter = function(ev){ showPluginModelTip(V, id, ev); };
+        c.onmouseleave = function(){ hideModelTip(); };
+        chips.appendChild(c);
+      });
+      g.appendChild(chips); box.appendChild(g);
+    });
+    box.onmousemove = trackModelTip;   // 浮窗跟随（同主界面）
+    plog(V, "net", "模型矩阵已装载 · " + ids.length + " 个模型");
+  }catch(e){
+    $(V.pfx+"ModelCount").textContent = "ERR";
+    $(V.pfx+"ModelList").innerHTML = '<div class="models-empty">// 拉取失败: '+
+      String(e && e.message || e).replace(/[<>&]/g, function(c){ return {"<":"&lt;",">":"&gt;","&":"&amp;"}[c]; })+'</div>';
+    plog(V, "err", "模型矩阵拉取失败: " + (e && e.message || e));
+  }
+}
+
+// 模型参数：拉 /model/info 只喂悬停浮窗与 metaMap（监测卡的上下文/输出/思考卡已按需求精简掉）
+async function loadPluginMeta(V){
+  try{
+    const r = await fetch("http://127.0.0.1:"+V.port+"/model/info");
+    const list = await r.json();
+    if (!Array.isArray(list) || !list.length) return;
+    const sig = list.map(function(m){ return m.name+"|"+m.maxInput+"|"+m.maxOutput+"|"+(m.reasoning||""); }).join("");
+    if (V.lastMeta === sig) return;   // 元数据没变不重写卡
+    V.lastMeta = sig;
+    V.modelIds = list.map(function(m){ return m.name; });
+    V.metaMap = {};
+    list.forEach(function(m){ V.metaMap[m.name] = m; });
+  }catch(e){}
+}
+
+// 插件模型悬停浮窗（复用主界面 #modelTip 样式；数据来自 /model/info）
+let pluginTipTimer = null;
+function showPluginModelTip(V, id, ev){
+  clearTimeout(pluginTipTimer);
+  pluginTipTimer = setTimeout(function(){
+    const meta = (V.metaMap||{})[id];
+    const el = $("modelTip");
+    if (!meta && !V.modelIds){ el.style.display = "none"; return; }
+    if (meta){
+      const fmt = function(n){ return n >= 1048576 ? (n/1048576)+"M" : n >= 1024 ? Math.round(n/1024)+"K" : (n||"—"); };
+      let html = '<div class="mt-head">'+id+'</div><table class="mt-tbl">';
+      html += '<tr><td>上下文</td><td>'+(meta.maxInput ? fmt(meta.maxInput) : "—")+'</td></tr>';
+      html += '<tr><td>最大输出</td><td>'+(meta.maxOutput ? fmt(meta.maxOutput) : "未暴露")+'</td></tr>';
+      html += '<tr><td>思考级别</td><td>'+(meta.reasoning||"—")+'</td></tr>';
+      html += '</table>';
+      if (meta.note) html += '<div class="mt-foot">'+meta.note+'</div>';
+      html += '<div class="mt-foot">插件后端 · 每百万 token 价格见官网</div>';
+      el.innerHTML = html;
+    } else {
+      el.innerHTML = '<div class="mt-head">'+id+'</div><div class="mt-foot">暂无元数据</div>';
+    }
+    el.style.display = "block";
+    positionModelTip(el, ev);
+  }, 1000);
+}
+
+// 消耗 TOP（右下栏，同主界面 bar-row 样式）+ 运行时长 + 健康延迟
+async function loadPluginStats(V){
+  // 积分格式化（官网口径：取整千分位）+ token 亿/万
+  const intFmt = function(n){ return Math.round(n).toLocaleString(); };
+  const tkFmt = function(n){ return n >= 1e8 ? (n/1e8).toFixed(1)+"亿" : n >= 1e4 ? (n/1e4).toFixed(1)+"万" : String(n||0); };
+  // 运行时长
+  try{
+    const h = await (await fetch("http://127.0.0.1:"+V.port+"/health")).json();
+    if (typeof h.uptimeSec === "number"){
+      V.uptime = h.uptimeSec;
+      $(V.pfx+"Uptime").textContent = fmtUptime(h.uptimeSec);
+    }
+  }catch(e){}
+  // 积分卡（团结：官网 /quota 口径；CodeBuddy：官方 get-user-resource 口径）
+  if (V.id === "tuanjie"){
+    try{
+      const q = await (await fetch("http://127.0.0.1:"+V.port+"/quota")).json();
+      let quotaErr = false;
+      if (q.err && q.source === "none"){
+        pSet(V, "StBudget", "超限");
+        pSet(V, "StBudgetSub", "402 预算耗尽");
+        pSet(V, "StSpent", "—"); pSet(V, "StSpentSub", "等待重置");
+        pSet(V, "StLeft", "0");
+        pSet(V, "StLeftSub", "官网查看");
+        quotaErr = true;   // 只跳过积分卡正常填充，消耗 TOP 继续走本地统计兜底
+      }
+      if (!quotaErr){
+        // 官网口径：每日总配额 = 每日配额 + 赠送（如 1万基础 + 1万加赠 = 2万），
+        // 剩余/已用按合计池显示（官网显示的积分即"剩余"）
+        const dayQuota = (q.daily.quota||0) + ((q.gift && q.gift.remaining)||0);
+        const usedPct = dayQuota > 0 ? Math.round(q.daily.used / dayQuota * 100) : 0;
+        pSet(V, "StBudget", intFmt(q.total));
+        pSet(V, "StBudgetSub", "总剩余 · 含每日赠送");
+        pSet(V, "StSpent", intFmt(q.daily.used));
+        pSet(V, "StSpentSub", "今日配额 "+intFmt(dayQuota)+" · 已用 "+usedPct+"%");
+        pSet(V, "StLeft", intFmt(q.total));
+        pSet(V, "StLeftSub", "今日剩余 · 24:00 重置");
+        pSet(V, "StReset", "今日 24:00");
+        pSet(V, "StResetSub", "北京时间 · 每日");
+        pSet(V, "StTopModel", intFmt(q.month.points));
+        pSet(V, "StTopModelSub", tkFmt(q.month.totalTokens)+" token · "+q.month.requests+" 次 · "+q.month.startDate+"~"+q.month.endDate);
+      }
+    }catch(e){}
+  } else if (V.id === "codebuddy"){
+    // 官方口径：积分卡主数=总剩余；当前包=正在消耗的包 used/size；最近过期=优先用提示
+    const cbFallback = function(){
+      pSet(V, "StPoints", "桌面端");
+      pSet(V, "StPointsSub", "无公开 API · 官网查看");
+    };
+    try{
+      const q = await (await fetch("http://127.0.0.1:"+V.port+"/quota")).json();
+      if (!q || q.source === "none"){ cbFallback(); }
+      else {
+        pSet(V, "StPoints", intFmt(q.total));
+        pSet(V, "StPointsSub", (q.packs||0) + " 个资源包 · 官方数据");
+        if (q.active && q.active.name){
+          pSet(V, "StBudget", intFmt(q.active.used) + "/" + intFmt(q.active.size));
+          const an = String(q.active.name).length > 12 ? String(q.active.name).slice(0,12)+"…" : q.active.name;
+          pSet(V, "StBudgetSub", an + " · " + String(q.active.end||"").slice(0,10) + " 到期");
+        }
+        if (q.nearestEnd && q.nearestEnd.name){
+          pSet(V, "StSpent", intFmt(q.nearestEnd.remain));
+          pSet(V, "StSpentSub", "积分 · " + String(q.nearestEnd.date||"").slice(0,10) + " 到期 · 优先用");
+        }
+      }
+    }catch(e){ cbFallback(); }
+  }
+  // 消耗 TOP：团结优先显示积分消耗（/quota 的 bySource = 官网 dashboard 同一数据源），
+  // 本地 token 统计兜底（CodeBuddy 无公开积分 API / 团结积分接口不可用时）
+  try{
+    let entries = null, mode = "tokens";
+    if (V.id === "tuanjie"){
+      try{
+        const q = await (await fetch("http://127.0.0.1:"+V.port+"/quota")).json();
+        const bs = q.bySource || [];
+        if (bs.length){
+          entries = bs.map(function(s){ return { name: s.label, sum: s.points||0, calls: s.requests||0 }; });
+          mode = "points";
+          plog(V, "net", "积分消耗 TOP 已装载 · " + bs.length + " 个来源（官方数据）");
+        }
+      }catch(e){}
+      // quota 暂时失败（缓存过期竞态/超时）但上一轮已是积分模式 → 保持当前渲染，
+      // 不回退 token 兜底：两套模式条目/颜色不同，来回横跳会闪出异色条
+      if (!entries && V.lastBarsKey && V.lastBarsKey.indexOf("points|") === 0) return;
+    }
+    if (!entries){
+      const d = await (await fetch("http://127.0.0.1:"+V.port+"/v1/stats")).json();
+      const models = d.models || {};
+      entries = Object.keys(models).map(function(name){
+        const m = models[name];
+        return { name: name, sum: m.totalTokens||0, inputTokens: m.inputTokens||0, outputTokens: m.outputTokens||0, calls: m.calls||0 };
+      });
+      if (typeof d.uptimeSec === "number" && !V.uptime){
+        V.uptime = d.uptimeSec;
+        $(V.pfx+"Uptime").textContent = fmtUptime(d.uptimeSec);
+      }
+      // 合并全部模型（未用补 0）
+      if (V.modelIds && V.modelIds.length){
+        entries = V.modelIds.map(function(id){
+          const hit = entries.find(function(x){ return x.name === id; });
+          return hit || { name:id, sum:0, inputTokens:0, outputTokens:0, calls:0 };
+        });
+      }
+    }
+    const fmtTok = function(n){ return n >= 1048576 ? Math.round(n/1048576)+"M" : n >= 1024 ? Math.round(n/1024)+"K" : (n||"—"); };
+    const list = entries.slice().sort(function(a,b){ return b.sum - a.sum; });
+    const wrap = $(V.pfx+"Bars");
+    if (!list.length || list.every(function(x){ return !x.sum; })){
+      wrap.innerHTML = '<div class="bars-empty">'+(mode==="points" ? "// 暂无积分消耗记录" : "// 暂无消耗 · 发起对话后自动统计")+'</div>';
+      pSet(V, "StHealth", "0");
+      V.lastBarsKey = null; V.barRows = null;
+      return;
+    }
+    // 增量渲染：条目集合（名称序列）不变时复用行元素，只更新宽度与数值——
+    // 数值增长由 .bar-fill 的 width 过渡平滑呈现，不重播入场动画、不整体抽动
+    const namesKey = mode + "|" + list.map(function(m){ return m.name; }).join(";");
+    let justRebuilt = false;
+    if (V.lastBarsKey !== namesKey){
+      V.lastBarsKey = namesKey;
+      V.barRows = {};
+      wrap.innerHTML = "";
+      justRebuilt = true;
+      list.forEach(function(m, i){
+        const row = document.createElement("div");
+        row.className = "bar-row";
+        row.innerHTML = '<span class="name"></span>'+
+          '<div class="bar-track"><div class="bar-fill" style="width:0"></div></div>'+
+          '<span class="val"></span>';
+        row.querySelector(".name").textContent = m.name;
+        row.querySelector(".name").title = m.name;
+        row.querySelector(".bar-track").title = m.name;
+        row.querySelectorAll(".name,.bar-track,.val").forEach(function(el){ el.style.animationDelay = (i*55)+"ms"; });
+        wrap.appendChild(row);
+        V.barRows[m.name] = {
+          fill: row.querySelector(".bar-fill"),
+          val:  row.querySelector(".val")
+        };
+      });
+    }
+    const apply = function(){
+      const max = list[0].sum || 1;
+      list.forEach(function(m){
+        const r = V.barRows && V.barRows[m.name];
+        if (!r) return;
+        let w = 0;
+        if (m.sum > 0){
+          w = (Math.log10(m.sum+1) / Math.log10(max+1)) * 100;
+          w = Math.max(4, Math.min(100, w));
+        }
+        r.fill.style.width = w + "%";
+        if (mode === "points"){
+          r.val.innerHTML = (m.sum ? intFmt(m.sum)+" 积分" : "—")+'<em class="sub2">'+(m.sum ? "积分消耗" : "未使用")+'</em>';
+        } else {
+          r.val.innerHTML = (m.sum ? fmtTok(m.sum) : "—")+'<em class="sub2">'+
+          (m.sum ? "↑"+fmtTok(m.inputTokens)+" / ↓"+fmtTok(m.outputTokens)+(m.calls ? " · "+m.calls+"次" : "") : "未使用")+'</em>';
+        }
+      });
+    };
+    // 重建那轮延一帧再设宽度，让 width 过渡（.9s）从 0 生长到位；此后增量直改不闪
+    if (justRebuilt) requestAnimationFrame(apply); else apply();
+  }catch(e){ $(V.pfx+"Bars").innerHTML = '<div class="bars-empty">// 统计暂不可用</div>'; }
+
+  // 健康延迟
+  const t0 = performance.now();
+  try{
+    await fetch("http://127.0.0.1:"+V.port+"/health");
+    pSet(V, "StHealth", Math.round(performance.now()-t0));
+  }catch(e){}
+}
+
+// 运行时长跳动（视图激活期间每秒 +1，与主界面 pollState 的效果一致）
+setInterval(function(){
+  Object.keys(PLUGIN_VIEWS).forEach(function(k){
+    const V = PLUGIN_VIEWS[k];
+    if (curView === k && V.phase === "running" && typeof V.uptime === "number"){
+      V.uptime += 1;
+      $(V.pfx+"Uptime").textContent = fmtUptime(V.uptime);
+    }
+  });
+}, 1000);
+
+// 插件日志尾部（Go 侧 ccPluginLog；首次进入视图时载入历史）
+async function loadPluginLog(V){
+  const r = await call("PluginLog", V.id, 80);
+  if (r && r.ok && Array.isArray(r.lines) && r.lines.length && !V.logLoaded){
+    const box = $(V.pfx+"Log");
+    box.innerHTML = "";
+    r.lines.forEach(function(l){
+      const s = String(l);
+      // 从 "2026/08/14 15:00:49 [tuanjie] ..." 提取 HH:MM:SS 作为行时间
+      const tm = /(\d{2}:\d{2}:\d{2})/.exec(s);
+      const body = tm ? s.slice(tm.index + 8).replace(/^\s*/, "") : s;
+      // 级别按内容推断（Go 侧日志无级别标记），配色与 COMMAND 的 log-line 完全一致
+      let level = "sys", lvTxt = "SYS";
+      if (/err|重试|失败|status=[45]\d\d/.test(body)){ level = "err"; lvTxt = "ERR"; }
+      else if (/status=200|dur=/.test(body)){ level = "ok"; lvTxt = "OK"; }
+      else if (/^stat model=/.test(body)){ level = "net"; lvTxt = "NET"; }
+      const line = document.createElement("div");
+      line.className = "log-line " + level;
+      line.innerHTML = '<span class="lt"></span><span class="lv">['+lvTxt+']</span><span class="lm"></span>';
+      line.querySelector(".lt").textContent = tm ? tm[1] : "———";
+      line.querySelector(".lm").textContent = body;
+      box.appendChild(line);
+    });
+    V.logLoaded = true;
+    box.scrollTop = box.scrollHeight;
+  }
+}
+
+/* 启动即显示视图切换 tab（全开源，无解锁/激活步骤）。 */
+// 延迟到 DOM 就绪后执行（早期 bind 调用在某些 WebView2 环境下会挂起）。
+if (document.readyState === "loading"){
+  document.addEventListener("DOMContentLoaded", function(){ setTimeout(initTabs, 300); });
+} else {
+  setTimeout(initTabs, 300);
+}
+</script>
 <div id="modelTip" style="display:none"></div>
 </body>
 </html>

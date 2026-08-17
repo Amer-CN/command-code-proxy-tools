@@ -530,8 +530,7 @@ func (a *app) bindAll(w webview.WebView) {
 		updateCache = string(b)
 		updateCacheMu.Unlock()
 	}()
-	// 插件/开发者模式绑定（ccDevVerify、ccPlugin*、ccLicense*、ccDevUnlock*）：
-	// 实现见 plugin_bindings.go（公开版为空，完整版由作者本地注入）。
+	// 插件绑定（ccPlugin*）：实现见 plugin_bindings.go。
 	a.bindPluginBindings(w)
 	_ = w.Bind("ccCalib", func(model, v string) string {
 		v = strings.TrimSpace(v)

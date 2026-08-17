@@ -1,24 +1,79 @@
-//go:build !private
-
-// plugin_modes.go —— 公开版插件模式占位。
-// 完整实现由作者本地 .private/app/plugin_modes.go 构建时注入；
-// 公开版（无注入）收到插件子模式参数时提示后退出。
+// plugin_modes.go —— 插件子模式：进程内直接运行对应插件服务（GUI 托管时 spawn 本模式）。
+// 本项目完全开源，无任何激活门：所有插件开箱即用。
 package main
 
 import (
 	"flag"
-	"fmt"
+	"log"
 	"os"
+	"path/filepath"
+
+	"github.com/dev2k6/command-code-proxy-server/internal/codebuddy"
+	"github.com/dev2k6/command-code-proxy-server/internal/lingxi"
+	"github.com/dev2k6/command-code-proxy-server/internal/notion"
+	"github.com/dev2k6/command-code-proxy-server/internal/tuanjie"
 )
 
 var (
-	flagPluginTuanjie   = flag.Bool("plugin-tuanjie", false, "（本版本未包含）")
-	flagPluginCodebuddy = flag.Bool("plugin-codebuddy", false, "（本版本未包含）")
-	flagDesensitize     = flag.Bool("desensitize", false, "（本版本未包含）")
+	flagPluginTuanjie   = flag.Bool("plugin-tuanjie", false, "团结 Cowork (Codely) 插件服务模式（GUI 托管时自动 spawn）")
+	flagPluginCodebuddy = flag.Bool("plugin-codebuddy", false, "CodeBuddy/WorkBuddy 插件服务模式（GUI 托管时自动 spawn；--desensitize 可选）")
+	flagDesensitize     = flag.Bool("desensitize", false, "CodeBuddy 插件：对 system/developer/tools 做零宽脱敏，缓解腾讯审核误拦")
+	flagPluginNotion    = flag.Bool("plugin-notion", false, "Notion AI 插件服务模式（凭据经 CDP 自动读取）")
+	flagPluginLingxi    = flag.Bool("plugin-lingxi", false, "WPS 灵犀插件服务模式（凭据经 CDP 自动读取）")
 )
 
-// runPluginMode 公开版：插件功能未包含在本次构建中。
+// runPluginMode 处理 --plugin-tuanjie / --plugin-codebuddy / --plugin-notion / --plugin-lingxi
+// 子模式：进程内直接跑对应插件服务（无窗口，关 GUI 不受影响）。
 func runPluginMode() int {
-	fmt.Fprintln(os.Stderr, "此版本不包含插件服务模式。")
-	return 1
+	// 团结插件服务模式：进程内直接跑 internal/tuanjie 服务。
+	if *flagPluginTuanjie {
+		srv := tuanjie.NewServer()
+		if err := srv.Start(*flagHost, *flagPort); err != nil {
+			_ = os.WriteFile(filepath.Join(exeDir(), "tuanjie-plugin-error.log"),
+				[]byte(err.Error()), 0o600)
+			os.Exit(1)
+		}
+		select {}
+	}
+
+	// CodeBuddy 插件服务模式：读桌面端登录态直连腾讯后端。
+	if *flagPluginCodebuddy {
+		srv, err := codebuddy.NewServer(*flagDesensitize)
+		if err != nil {
+			_ = os.WriteFile(filepath.Join(exeDir(), "codebuddy-plugin-error.log"),
+				[]byte(err.Error()), 0o600)
+			os.Exit(1)
+		}
+		log.Printf("codebuddy-plugin: listening on %s:%s (backend copilot.tencent.com, desensitize=%v)",
+			*flagHost, *flagPort, *flagDesensitize)
+		if err := srv.Start(*flagHost, *flagPort); err != nil {
+			_ = os.WriteFile(filepath.Join(exeDir(), "codebuddy-plugin-error.log"),
+				[]byte(err.Error()), 0o600)
+			os.Exit(1)
+		}
+		select {}
+	}
+
+	// Notion AI 插件服务模式：CDP 自动读桌面端令牌 → OpenAI 兼容端点。
+	if *flagPluginNotion {
+		srv := notion.NewServer()
+		log.Printf("notion-plugin: starting on %s:%s", *flagHost, *flagPort)
+		if err := srv.Start(*flagHost, *flagPort); err != nil {
+			_ = os.WriteFile(filepath.Join(exeDir(), "notion-plugin-error.log"),
+				[]byte(err.Error()), 0o600)
+			os.Exit(1)
+		}
+		select {}
+	}
+	// WPS 灵犀插件服务模式。
+	if *flagPluginLingxi {
+		srv := lingxi.NewServer()
+		log.Printf("lingxi-plugin: starting on %s:%s", *flagHost, *flagPort)
+		if err := srv.Start(*flagHost, *flagPort); err != nil {
+			_ = os.WriteFile(filepath.Join(exeDir(), "lingxi-plugin-error.log"), []byte(err.Error()), 0o600)
+			os.Exit(1)
+		}
+		select {}
+	}
+	return 0
 }

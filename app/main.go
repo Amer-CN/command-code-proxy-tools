@@ -44,14 +44,13 @@ var (
 	flagDebug    = flag.Bool("debug", false, "调试模式：打印请求/响应体到日志（headless-error.log）")
 	flagVersion  = flag.Bool("version", false, "打印版本并退出")
 
-	// 插件子模式 flag（--plugin-tuanjie / --plugin-codebuddy / --desensitize）
-	// 定义在 plugin_modes.go；公开版为提示 stub，完整版为真实实现（作者本地注入）。
+	// 插件子模式 flag（--plugin-tuanjie / --plugin-codebuddy / --plugin-notion / --plugin-lingxi / --desensitize）
+	// 定义在 plugin_modes.go。
 )
 
 // runCoreHeadless 在本进程内启动代理核心并阻塞（headless 后台模式）。
 // 这是"代理本体"：GUI 的 start 会 spawn 本模式作为子进程。
-// 注意：CommandCode 主代理是公开功能，不做激活限制；
-// 激活门只保护隐藏插件（团结/CodeBuddy，见 plugins.go 的 pluginStart）。
+// 本项目完全开源，无任何激活门。
 func runCoreHeadless(host, port, apiKey string) error {
 	// 未显式传 key 时，从 api-key.txt 读取（GUI 保存的 key 自动生效）。
 	if apiKey == "" {
@@ -103,8 +102,7 @@ func main() {
 
 	app := newApp(*flagHost, *flagPort, *flagAPIKey)
 
-	// 插件子模式（团结 / CodeBuddy）：实现见 plugin_modes.go
-	// （公开版为提示 stub；完整版由作者构建时注入，含激活门与插件服务）
+	// 插件子模式（团结 / CodeBuddy / Notion / 灵犀）：实现见 plugin_modes.go
 	if *flagPluginTuanjie || *flagPluginCodebuddy || *flagPluginNotion || *flagPluginLingxi {
 		os.Exit(runPluginMode())
 	}

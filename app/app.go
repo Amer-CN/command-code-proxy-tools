@@ -1,7 +1,4 @@
-//go:build !private
-
-// app.go —— 公开版 app 结构（无插件托管字段）。
-// 完整版结构见作者本地 .private/app/app.go（构建时注入，含插件状态）。
+// app.go —— 完整版 app 结构（含插件托管状态字段；作者本地注入，不进公开仓库）。
 package main
 
 import (
@@ -22,4 +19,5 @@ type app struct {
 	started  time.Time
 	apiKey   string
 	lastErr  string
+	plugins  map[string]*pluginState // 开发者模式插件（tuanjie/codebuddy）状态
 }
