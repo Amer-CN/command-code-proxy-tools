@@ -105,7 +105,7 @@ func main() {
 
 	// 插件子模式（团结 / CodeBuddy）：实现见 plugin_modes.go
 	// （公开版为提示 stub；完整版由作者构建时注入，含激活门与插件服务）
-	if *flagPluginTuanjie || *flagPluginCodebuddy {
+	if *flagPluginTuanjie || *flagPluginCodebuddy || *flagPluginNotion || *flagPluginLingxi {
 		os.Exit(runPluginMode())
 	}
 

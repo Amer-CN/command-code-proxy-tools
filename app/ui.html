@@ -85,6 +85,9 @@ body{
 .ver-chip{font-family:var(--mono);font-size:12px;color:var(--dim);border:1px solid var(--line2);
   padding:3px 9px;border-radius:3px;letter-spacing:1px;background:rgba(124,77,255,.06)}
 .ver-chip b{color:#b9a5ff;font-weight:600}
+.gear-btn{font-family:var(--mono);font-size:15px;line-height:1;color:var(--dim);border:1px solid var(--line2);
+  padding:5px 9px;border-radius:3px;background:rgba(124,77,255,.06);cursor:pointer;transition:all .2s}
+.gear-btn:hover{color:#fff;border-color:rgba(0,229,255,.5);box-shadow:0 0 12px rgba(0,229,255,.2)}
 .state-pill{display:flex;align-items:center;gap:8px;font-size:12px;letter-spacing:1.5px;
   border:1px solid var(--line);border-radius:20px;padding:6px 14px;background:var(--glass2);transition:all .4s var(--ease)}
 .state-pill .pdot{width:8px;height:8px;border-radius:50%;background:var(--dim);transition:all .4s}
@@ -430,6 +433,13 @@ body{
 .modal-close{position:absolute;top:14px;right:16px;width:26px;height:26px;border-radius:5px;border:1px solid var(--line);
   background:transparent;color:var(--dim);cursor:pointer;font-size:13px;transition:all .2s}
 .modal-close:hover{color:#fff;border-color:var(--red);box-shadow:0 0 12px rgba(255,61,90,.3)}
+/* 设置面板 */
+.modal-box .s-row{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.modal-box .s-key{flex:none;color:var(--dim2);letter-spacing:2px;min-width:88px}
+.modal-box .s-upd-res{margin-top:10px;font-family:var(--mono);font-size:12px;color:#b7cbea;
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-height:24px}
+.modal-box .gh-link{color:#7fe6ff;text-decoration:none;border-bottom:1px dashed rgba(0,229,255,.4);cursor:pointer}
+.modal-box .gh-link:hover{color:#fff}
 
 /* ============ 启动画面 ============ */
 #boot{position:fixed;inset:0;z-index:100;background:#020409;display:flex;flex-direction:column;
@@ -498,9 +508,8 @@ body{
       <div class="subtitle">代理控制台 · 本地 OpenAI 兼容链路</div>
     </div>
     <div class="spacer"></div>
-    <span class="ver-chip" id="dlChip" style="display:none" title="累计下载（含历史版本）">⬇ <b id="dlNum">0</b> 次</span>
-    <span class="ver-chip" id="verChip" title="UI 版本" style="cursor:default">UI <b>v2.4.0</b></span>
-    <span class="ver-chip">CORE <b>v1.2.0</b></span>
+    <!-- 设置入口：版本/下载/关于/检查更新统一收纳在设置面板，顶栏不再放三个 chip -->
+    <button class="gear-btn" id="cmdTopSettings" title="设置" onclick="openSettings()" aria-label="设置">⚙</button>
     <div class="state-pill idle" id="statePill"><span class="pdot"></span><span id="pillText">初始化</span></div>
   </header>
 
@@ -635,6 +644,28 @@ body{
 
 <div id="toasts"></div>
 <div id="modalRoot"></div>
+
+<!-- 设置面板（统一收纳 版本/下载/关于/开发者模式/检查更新） -->
+<div class="modal-mask" id="settingsMask" style="display:none">
+  <div class="modal-box">
+    <button class="modal-close" id="settingsClose" title="关闭">✕</button>
+    <h3><span class="tick"></span>设置 · SETTINGS</h3>
+    <div class="m-body">
+      <div class="s-row"><span class="s-key">开发者模式</span><b id="setDevVal">未开启</b></div>
+      <div class="s-row"><span class="s-key">累计下载</span><b id="setDlVal">0</b>&nbsp;次</div>
+      <div class="s-row"><span class="s-key">版本</span>UI <b id="setUiVer">—</b> / CORE <b id="setCoreVer">—</b></div>
+      <div class="s-row"><span class="s-key">关于</span>
+        CommandCode Proxy Deck · 本地 OpenAI 兼容链路 ·
+        <a class="gh-link" id="setGithub">GitHub⌝</a>
+      </div>
+      <div class="s-row"><span class="s-key">更新</span>
+        <button class="ibtn" id="setCheckBtn">检查新版本</button>
+      </div>
+      <div class="s-upd-res" id="setUpdRes"></div>
+    </div>
+  </div>
+</div>
+
 <div id="demoBadge">DEMO 预览模式 · 数据为模拟</div>
 
 <script>
@@ -1187,6 +1218,66 @@ function openModal(html){
 $("helpBtn").onclick = ()=>openModal(HELP_HTML);
 $("modelRefBtn").onclick = ()=>openModal(REF_HTML);
 
+/* ---------------- 设置面板 ---------------- */
+const UI_CUR = "v2.4.0";
+function openSettings(){
+  const mask = $("settingsMask");
+  $("setDevVal").textContent = (typeof devUnlocked === "function" && devUnlocked()) ? "已开启" : "未开启";
+  // 累计下载：优先读最近一次 CheckUpdate 结果，未获取过则回退 localStorage。
+  const upd = window._UPDATE || {};
+  let dl = upd.downloads > 0 ? upd.downloads : 0;
+  if (!(dl > 0)){ try{ dl = parseInt(localStorage.getItem("dlCount") || "0", 10) || 0; }catch(e){} }
+  $("setDlVal").textContent = dl;
+  $("setUpdRes").textContent = "";
+  mask.style.display = "flex";
+  // 版本：实时读取 Go 常量，保持与主界面一致
+  call("GetState").then(st=>{
+    $("setUiVer").textContent = (st && st.version) || UI_CUR;
+    $("setCoreVer").textContent = (st && st.core) || "v1.2.0";
+  }).catch(()=>{
+    $("setUiVer").textContent = UI_CUR;
+    $("setCoreVer").textContent = "v1.2.0";
+  });
+}
+function closeSettings(){ $("settingsMask").style.display = "none"; }
+$("settingsClose").onclick = closeSettings;
+$("settingsMask").onclick = e=>{ if (e.target.classList.contains("modal-mask")) closeSettings(); };
+$("setGithub").onclick = ()=> call("Open", "https://github.com/Amer-CN/command-code-proxy-tools");
+$("setCheckBtn").onclick = checkUpdateNow;
+async function checkUpdateNow(){
+  const res = $("setUpdRes");
+  res.textContent = "检查中…";
+  let r = null;
+  try{ r = await call("CheckUpdate"); }catch(e){ r = null; }
+  if (!r || !r.ok){
+    if (r && r.msg === "checking"){ setTimeout(checkUpdateNow, 2000); return; }
+    res.textContent = "检查失败：" + ((r && r.msg) || "未知错误");
+    toast("err", "检查新版本失败", (r && r.msg) || "");
+    return;
+  }
+  const latest = r.latest || null;
+  res.textContent = "";
+  if (!latest){
+    const has = window._UPDATE && verCmp(UI_CUR, window._UPDATE.latest) < 0;
+    if (has){ showUpdResult(window._UPDATE.latest, window._UPDATE.url); }
+    else { res.textContent = "已经是最新版本"; toast("ok", "已经是最新版本", UI_CUR); }
+    return;
+  }
+  window._UPDATE = { latest: latest, url: r.url || "", downloads: r.downloads > 0 ? r.downloads : ((window._UPDATE && window._UPDATE.downloads) || 0) };
+  if (r.downloads > 0){ try{ localStorage.setItem("dlCount", String(r.downloads)); }catch(e){} $("setDlVal").textContent = r.downloads; }
+  if (verCmp(UI_CUR, latest) < 0){
+    showUpdResult(latest, r.url || "");
+  } else {
+    res.textContent = "已经是最新版本";
+    toast("ok", "已经是最新版本", UI_CUR);
+  }
+}
+function showUpdResult(latest, url){
+  const res = $("setUpdRes");
+  res.innerHTML = '发现新版本 <b style="color:#ffd77a">' + latest + '</b>（当前 ' + UI_CUR + '） <button class="ibtn grn" id="setUpdGo">前往下载</button>';
+  $("setUpdGo").onclick = ()=> call("Open", url || "https://github.com/Amer-CN/command-code-proxy-tools/releases");
+}
+
 /* ---------------- 星空背景（节能版） ---------------- */
 (function stars(){
   const cv = $("stars"), cx = cv.getContext("2d");
@@ -1315,19 +1406,14 @@ function verCmp(a, b){
 (async function checkUpdate(){
   if (!HAS_BRIDGE) return;
   const cur = "v2.4.0";
-  // 下载量本地缓存：启动先显示上次值，刷新成功后更新。
+  // 下载量缓存：结果统一存全局 window._UPDATE 供设置面板读取（顶栏 chip 已移除）。
   // 本地从未成功获取过（如 API 限流/离线）时，用发布时记录的已知值兜底——
   // 保证界面上始终有数可看，数据不是最新也没关系，恢复后自动刷新。
+  window._UPDATE = { latest: cur, url: "", downloads: 0 };
   let cachedDl = 0;
   try{ cachedDl = parseInt(localStorage.getItem("dlCount") || "0", 10) || 0; }catch(e){}
   if (!(cachedDl > 0)) cachedDl = 2; // 发布时已知累计值（seed）
-  function showDl(n){
-    if (!(n > 0)) return;
-    const shown = String(n) + String.fromCharCode(0x39);
-    $("dlNum").textContent = shown;
-    $("dlChip").style.display = "";
-  }
-  showDl(cachedDl);
+  window._UPDATE.downloads = cachedDl;
   let attempt = 0;
   async function tryOnce(){
     attempt++;
@@ -1335,8 +1421,8 @@ function verCmp(a, b){
     try {
       r = await call("CheckUpdate");
       if (r && r.ok && r.latest){
+        window._UPDATE = { latest: r.latest, url: r.url || "", downloads: r.downloads > 0 ? r.downloads : cachedDl };
         if (r.downloads > 0){
-          showDl(r.downloads);
           try{ localStorage.setItem("dlCount", String(r.downloads)); }catch(e){}
         }
         const hasUpdate = verCmp(cur, r.latest) < 0;
