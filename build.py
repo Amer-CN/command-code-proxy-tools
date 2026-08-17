@@ -22,6 +22,8 @@ INJECT = [
     # Go 敏感包（整个目录）
     (os.path.join(PRIVATE, "go", "tuanjie"), "internal/tuanjie"),
     (os.path.join(PRIVATE, "go", "codebuddy"), "internal/codebuddy"),
+    (os.path.join(PRIVATE, "go", "notion"), "internal/notion"),
+    (os.path.join(PRIVATE, "go", "lingxi"), "internal/lingxi"),
     (os.path.join(PRIVATE, "go", "license"), "internal/license"),
     # app 包文件（同名覆盖公开 stub）
     (os.path.join(PRIVATE, "app", "plugin_modes.go"), "app/plugin_modes.go"),
