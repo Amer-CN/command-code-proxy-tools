@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strconv"
 	"time"
 )
 
@@ -81,6 +82,7 @@ func (s *Server) Start(host, port string) error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", s.handleHealth)
 	mux.Handle("/v1/models", proxy)
+	mux.Handle("/v1/chat/completions", adaptQuirks(proxy))
 	mux.Handle("/v1/", proxy)
 	mux.Handle("/", proxy)
 
@@ -91,6 +93,51 @@ func (s *Server) Start(host, port string) error {
 	s.ln = ln
 	s.srv = &http.Server{Handler: corsWith(bufferBody(mux))}
 	return s.srv.Serve(ln)
+}
+
+// adaptQuirks 适配 b.ai 的协议怪癖（DSH 接入包实战经验 + 官方 API 常见约束）：
+//  1. 不认 developer 角色 → 降级为 system（否则 400）；
+//  2. reasoning_effort 只认 off/low/medium/high → max 改写成 high；
+//  3. max_tokens 超过 8192 钳到 8192（b.ai 上限，超发会被拒）。
+// 只动 JSON 请求体；改写后同步 Content-Length。解析失败的原样放行（让上游报错）。
+func adaptQuirks(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost && r.Body != nil {
+			if buf, err := io.ReadAll(io.LimitReader(r.Body, 32<<20)); err == nil {
+				var m map[string]any
+				if json.Unmarshal(buf, &m) == nil {
+					changed := false
+					if msgs, ok := m["messages"].([]any); ok {
+						for _, raw := range msgs {
+							if msg, ok := raw.(map[string]any); ok {
+								if role, _ := msg["role"].(string); role == "developer" {
+									msg["role"] = "system"
+									changed = true
+								}
+							}
+						}
+					}
+					if eff, ok := m["reasoning_effort"].(string); ok && eff == "max" {
+						m["reasoning_effort"] = "high"
+						changed = true
+					}
+					if mt, ok := m["max_tokens"].(float64); ok && mt > 8192 {
+						m["max_tokens"] = 8192
+						changed = true
+					}
+					if changed {
+						if nb, err := json.Marshal(m); err == nil {
+							buf = nb
+						}
+					}
+				}
+				r.Body = io.NopCloser(bytes.NewReader(buf))
+				r.ContentLength = int64(len(buf))
+				r.Header.Set("Content-Length", strconv.Itoa(len(buf)))
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // bufferBody 把带请求体的请求读入内存并设 GetBody（可重放），重试的前提。
