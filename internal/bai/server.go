@@ -66,8 +66,13 @@ func (s *Server) Start(host, port string) error {
 		req.URL.Host = target.Host
 		req.Host = target.Host // 必须改：Cloudflare 对未知 Host 直接 403
 	}
+	// api.b.ai 对某些网络（尤其国内直连）是间歇性失败的（连接层 000 / 502 波动）。
+	// 对可安全重发的请求（请求体为空，如 GET /v1/models、/health 等）做自动重试，
+	// 跳过抖动窗口；带请求体的 POST（聊天/流式）不做应用层重试，避免重复计费。
+	retry := &retryRoundTripper{transport: http.DefaultTransport, max: 3}
 	proxy := &httputil.ReverseProxy{
 		Director:      director,
+		Transport:     retry,
 		FlushInterval: 50 * time.Millisecond, // SSE 流式及时刷新
 	}
 
@@ -84,6 +89,37 @@ func (s *Server) Start(host, port string) error {
 	s.ln = ln
 	s.srv = &http.Server{Handler: corsWith(mux)}
 	return s.srv.Serve(ln)
+}
+
+// retryRoundTripper 对可安全重放的请求做有限次连接/5xx 重试。
+// 只在「请求体为空」时启用（GET 等幂等请求）；带 body 的请求原样单发。
+type retryRoundTripper struct {
+	transport http.RoundTripper
+	max       int
+}
+
+func (r *retryRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	if req.Body != nil && req.GetBody == nil {
+		return r.transport.RoundTrip(req) // 不可重放：单发
+	}
+	var (
+		lastResp *http.Response
+		lastErr  error
+	)
+	for i := 0; i < r.max; i++ {
+		lastResp, lastErr = r.transport.RoundTrip(req)
+		if lastErr == nil && lastResp != nil && lastResp.StatusCode < 500 {
+			return lastResp, nil // 成功或 4xx（不重试）
+		}
+		if lastErr == nil && lastResp != nil {
+			_ = lastResp.Body.Close() // 5xx：关闭后重试
+		}
+		time.Sleep(300 * time.Millisecond)
+	}
+	if lastResp != nil {
+		return lastResp, nil
+	}
+	return nil, lastErr
 }
 
 // Stop 停止服务。
