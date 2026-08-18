@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"os"
 	"strconv"
 	"time"
 )
@@ -72,7 +74,7 @@ func (s *Server) Start(host, port string) error {
 	// api.b.ai 对某些网络（尤其国内直连）是间歇性失败的：连接层错误 / Cloudflare 520。
 	// 520/502/503 意味着请求没到模型层（无计费），重放安全。
 	// 前置 bufferBody 把请求体缓存为可重放（GetBody），POST 也能自动重试。
-	retry := &retryRoundTripper{transport: http.DefaultTransport, max: 3}
+	retry := &retryRoundTripper{transport: detectUpstreamTransport(), max: 3}
 	proxy := &httputil.ReverseProxy{
 		Director:      director,
 		Transport:     retry,
@@ -93,6 +95,33 @@ func (s *Server) Start(host, port string) error {
 	s.ln = ln
 	s.srv = &http.Server{Handler: corsWith(bufferBody(mux))}
 	return s.srv.Serve(ln)
+}
+
+// detectUpstreamTransport 决定转发上游用的 HTTP Transport：
+// 进程已有 HTTPS_PROXY/https_proxy 时直接用 http.DefaultTransport（Go 自动认环境变量，行为同现状）；
+// 否则顺次 TCP 试连常见本地代理端口，第一个连通的作为代理（仅作用于本 Transport，不改全局环境变量）；
+// 全部不通则沿用 http.DefaultTransport 直连。结果写一行日志。
+func detectUpstreamTransport() http.RoundTripper {
+	if os.Getenv("HTTPS_PROXY") != "" || os.Getenv("https_proxy") != "" {
+		log.Printf("bai-plugin: 检测到 HTTPS_PROXY/https_proxy 环境变量，使用 http.DefaultTransport（按环境变量走代理）")
+		return http.DefaultTransport
+	}
+	for _, p := range []string{"7897", "7890", "7892", "7896", "10809", "1080"} {
+		addr := net.JoinHostPort("127.0.0.1", p)
+		conn, err := net.DialTimeout("tcp", addr, 300*time.Millisecond)
+		if err != nil {
+			continue
+		}
+		_ = conn.Close()
+		proxyURL, _ := url.Parse("http://" + addr)
+		base := http.DefaultTransport.(*http.Transport)
+		tr := base.Clone() // 复用默认超时等行为，仅覆盖 Proxy
+		tr.Proxy = http.ProxyURL(proxyURL)
+		log.Printf("bai-plugin: 使用本地代理 %s", addr)
+		return tr
+	}
+	log.Printf("bai-plugin: 未发现本地代理，上游直连")
+	return http.DefaultTransport
 }
 
 // adaptQuirks 适配 b.ai 的协议怪癖（DSH 接入包实战经验 + 官方 API 常见约束）：

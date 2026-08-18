@@ -340,7 +340,9 @@ func aliasNote(name string) string {
 	case "GLM-5.2":
 		return "✗锁定 · 被团结后端锁定，改用 codely-core"
 	case "GLM-5.3":
-		return "✓可用 · 付费解锁 · 默认推理档（effort 参数触发上游 400）"
+		return "✓可用 · 输入3.2/输出11.2 积分/1M · 默认推理档"
+	case "KIMI-K3":
+		return "✓可用 · ⚠高价 · 16积分/1M输入 · 输出80 · flash的10倍 · 慎用于长上下文"
 	case "codely-air-public":
 		return "✗锁定 · 公开变体被团结后端锁定"
 	case "codely-basic-public":
