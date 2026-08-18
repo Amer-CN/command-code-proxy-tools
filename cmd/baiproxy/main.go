@@ -1,44 +1,36 @@
-// baiproxy — 本地透明转发：把任意 OpenAI 兼容请求转发到 api.b.ai。
+// baiproxy — B.AI 本地透明转发（兼容入口）。
+//
+// 收编自独立转发实现：核心逻辑已迁到 internal/bai 包（本仓库唯一的 b.ai 转发实现，
+// 也供 GUI 的原生插件「B.AI」复用）。本入口仅为兼容 `baiproxy.exe` 旧调用方式保留：
+// 与 GUI 托管同一转发服务，共用端口 8891，请勿与 GUI 插件同时运行。
 //
 // 背景：b.ai 是标准 OpenAI 兼容 API（可直接调用），但部分客户端/网络栈
 // （如 Node/Electron 的 fetch）连 api.b.ai 时连接层会间歇失败（fetch failed），
-// 而 Go 的 HTTP 栈实测最稳（8/8 成功）。本工具监听本地端口，把请求用 Go 栈
-// 转发给上游，ZCode 等客户端配 baseURL = http://127.0.0.1:8891/v1 即可使用。
+// 而 Go 的 HTTP 栈实测最稳。本工具监听本地端口，把请求用 Go 栈转发给上游，
+// ZCode 等客户端配 baseURL = http://127.0.0.1:8891/v1 即可使用。
 //
 // 用法：
 //   baiproxy                       监听 127.0.0.1:8891 -> https://api.b.ai
-//   baiproxy -port 8891 -upstream https://api.b.ai
+//   baiproxy -addr 127.0.0.1:8891
 package main
 
 import (
 	"flag"
 	"log"
-	"net/http"
-	"net/http/httputil"
-	"net/url"
-	"time"
+	"net"
+
+	"github.com/dev2k6/command-code-proxy-server/internal/bai"
 )
 
 func main() {
-	addr := flag.String("addr", "127.0.0.1:8891", "本地监听地址")
-	upstream := flag.String("upstream", "https://api.b.ai", "上游 base URL")
+	addr := flag.String("addr", "127.0.0.1:8891", "本地监听地址（host:port）")
 	flag.Parse()
 
-	target, err := url.Parse(*upstream)
+	host, port, err := net.SplitHostPort(*addr)
 	if err != nil {
-		log.Fatalf("上游地址解析失败: %v", err)
+		log.Fatalf("监听地址解析失败: %v", err)
 	}
-	// 用自定义 Director：必须把 Host 改成上游（Cloudflare 对不认识的主机名直接 403），
-	// 并保持其余请求头原样透传（Authorization 由客户端携带）。
-	director := func(req *http.Request) {
-		req.URL.Scheme = target.Scheme
-		req.URL.Host = target.Host
-		req.Host = target.Host
+	if err := bai.NewServer().Start(host, port); err != nil {
+		log.Fatalf("bai 转发启动失败: %v", err)
 	}
-	proxy := &httputil.ReverseProxy{
-		Director:      director,
-		FlushInterval: 50 * time.Millisecond, // SSE 流式及时刷新
-	}
-	log.Printf("baiproxy 监听 %s → %s（OpenAI 兼容转发）", *addr, target)
-	log.Fatal(http.ListenAndServe(*addr, proxy))
 }

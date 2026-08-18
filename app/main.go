@@ -102,8 +102,8 @@ func main() {
 
 	app := newApp(*flagHost, *flagPort, *flagAPIKey)
 
-	// 插件子模式（团结 / CodeBuddy / Notion / 灵犀）：实现见 plugin_modes.go
-	if *flagPluginTuanjie || *flagPluginCodebuddy || *flagPluginNotion || *flagPluginLingxi {
+	// 插件子模式（团结 / CodeBuddy / Notion / 灵犀 / B.AI）：实现见 plugin_modes.go
+	if *flagPluginTuanjie || *flagPluginCodebuddy || *flagPluginNotion || *flagPluginLingxi || *flagPluginBai {
 		os.Exit(runPluginMode())
 	}
 

@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/dev2k6/command-code-proxy-server/internal/bai"
 	"github.com/dev2k6/command-code-proxy-server/internal/codebuddy"
 	"github.com/dev2k6/command-code-proxy-server/internal/lingxi"
 	"github.com/dev2k6/command-code-proxy-server/internal/notion"
@@ -19,6 +20,7 @@ var (
 	flagDesensitize     = flag.Bool("desensitize", false, "CodeBuddy 插件：对 system/developer/tools 做零宽脱敏，缓解腾讯审核误拦")
 	flagPluginNotion    = flag.Bool("plugin-notion", false, "Notion AI 插件服务模式（凭据经 CDP 自动读取）")
 	flagPluginLingxi    = flag.Bool("plugin-lingxi", false, "WPS 灵犀插件服务模式（凭据经 CDP 自动读取）")
+	flagPluginBai       = flag.Bool("plugin-bai", false, "B.AI 插件服务模式（本地转发到 api.b.ai，OpenAI 兼容）")
 )
 
 // runPluginMode 处理 --plugin-tuanjie / --plugin-codebuddy / --plugin-notion / --plugin-lingxi
@@ -70,6 +72,17 @@ func runPluginMode() int {
 		log.Printf("lingxi-plugin: starting on %s:%s", *flagHost, *flagPort)
 		if err := srv.Start(*flagHost, *flagPort); err != nil {
 			_ = os.WriteFile(filepath.Join(exeDir(), "lingxi-plugin-error.log"), []byte(err.Error()), 0o600)
+			os.Exit(1)
+		}
+		select {}
+	}
+
+	// B.AI 插件服务模式：本地转发到 api.b.ai（OpenAI 兼容透传）。
+	if *flagPluginBai {
+		srv := bai.NewServer()
+		log.Printf("bai-plugin: starting on %s:%s", *flagHost, *flagPort)
+		if err := srv.Start(*flagHost, *flagPort); err != nil {
+			_ = os.WriteFile(filepath.Join(exeDir(), "bai-plugin-error.log"), []byte(err.Error()), 0o600)
 			os.Exit(1)
 		}
 		select {}
