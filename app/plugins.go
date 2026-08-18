@@ -175,6 +175,23 @@ func (a *app) pluginStart(id string) error {
 	}
 	st.mu.Unlock()
 
+	// 端口已有健康实例（可能是 CLI/上一会话/别的工具拉起的）→ 直接接管复用，
+	// 不杀不重启——正在用它跑任务的客户端（子智能体等）不受影响。
+	// 只有端口被"非健康"进程占用（僵尸/残留）才清理后重启。
+	if httpOK(a.pluginHealthURL(*d)) {
+		st.mu.Lock()
+		st.running = true // GUI 语义：端口上有可用服务 = 运行中（外部实例，cmd 为 nil）
+		st.cmd = nil
+		st.started = time.Now()
+		st.lastErr = ""
+		st.mu.Unlock()
+		return nil
+	}
+	if portBusy(fmt.Sprintf("%d", d.Port)) {
+		_ = killByPort(fmt.Sprintf("%d", d.Port))
+		time.Sleep(300 * time.Millisecond)
+	}
+
 	var cmd *exec.Cmd
 	if d.Native != "" {
 		// 原生插件：spawn 本 exe（内置于二进制，无目录/Python 依赖）
@@ -202,11 +219,6 @@ func (a *app) pluginStart(id string) error {
 		args = append(args, d.Args...)
 		cmd = exec.Command(exe, args...)
 		cmd.Dir = filepath.Dir(script)
-	}
-	// 端口被非健康进程占用 → 清理（复用僵尸清理逻辑）
-	if portBusy(fmt.Sprintf("%d", d.Port)) {
-		_ = killByPort(fmt.Sprintf("%d", d.Port))
-		time.Sleep(300 * time.Millisecond)
 	}
 	if lf, err := os.OpenFile(a.pluginLog(*d), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644); err == nil {
 		cmd.Stdout = lf
