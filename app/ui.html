@@ -713,7 +713,6 @@ body{
   <button class="vtab active" data-view="command">COMMAND</button>
   <button class="vtab" data-view="tuanjie">团结</button>
   <button class="vtab" data-view="codebuddy">WORKBUDDY</button>
-  <button class="vtab" data-view="bai">B.AI</button>
   <button class="vtab" data-view="notion">NOTION</button>
   <button class="vtab" data-view="lingxi">灵犀</button>
 </div>
@@ -951,117 +950,6 @@ body{
 </div>
 
 <!-- ============ Notion 视图（同构克隆，数据源 8789） ============ -->
-<!-- ============ 插件视图（与 COMMAND 完全同构：克隆主界面 DOM，仅换数据源） ============ -->
-<div class="app" id="viewBai" style="display:none">
-  <header class="topbar">
-    <div class="logo">
-      <svg viewBox="0 0 100 100" fill="none">
-        <g class="hex"><polygon points="50,4 90,27 90,73 50,96 10,73 10,27" stroke="#8ad" stroke-width="3"/></g>
-        <path d="M30 36 L54 28 L70 66 L46 74 Z" fill="#8ad"/>
-      </svg>
-    </div>
-    <div class="title-wrap">
-      <div class="title">B.AI</div>
-      <div class="subtitle">B.AI · 本地 OpenAI 兼容链路（Go 栈转发 api.b.ai）</div>
-    </div>
-    <div class="spacer"></div>
-    <span class="ver-chip" title="插件标识">PLUGIN <b>B.AI</b></span>
-    <button class="gear-btn" title="设置" onclick="openSettings()" aria-label="设置">⚙</button>
-    <div class="state-pill idle" id="baPill"><span class="pdot"></span><span id="baPillText">待命</span></div>
-  </header>
-
-  <!-- 主区（与主界面同构） -->
-  <main class="deck">
-    <!-- 插件核心（同反应堆） -->
-    <section class="panel core-panel tilt">
-      <div class="p-head"><span class="tick"></span><h2>代理核心</h2><span class="en">PROXY CORE</span></div>
-      <div class="p-body reactor-zone" id="baZone">
-        <div class="reactor" id="baReactor" title="点击 启动 / 停止">
-          <div class="holo-base"></div>
-          <div class="ring ring-a"></div><div class="ring ring-b"></div>
-          <div class="ring ring-c"></div><div class="ring ring-d"></div>
-          <div class="orbit o1"><i></i></div><div class="orbit o2"><i></i></div>
-          <div class="core">
-            <div class="core-ring"></div>
-            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round">
-              <path d="M12 3v8"/><path d="M6.3 6.5a8 8 0 1 0 11.4 0"/>
-            </svg>
-          </div>
-        </div>
-        <div class="status-big" id="baStatus">插件待命</div>
-        <div class="status-sub" id="baStatusSub">PLUGIN STANDBY</div>
-        <div class="endpoint" id="baEndpoint" title="点击复制 Base URL">http://127.0.0.1:8891/v1</div>
-        <div class="meta-row">
-          <div class="meta"><div class="v" id="baUptime">--:--:--</div><div class="k">运行时长</div></div>
-          <div class="meta"><div class="v">8891</div><div class="k">监听端口</div></div>
-          <div class="meta"><div class="v" id="baModels">—</div><div class="k">模型数</div></div>
-        </div>
-        <div class="eq" id="baEq"></div>
-        <div class="hint-line">点击核心 启动/停止插件<br>透明透传一切请求到 api.b.ai · 停止独立 baiproxy 避免端口冲突</div>
-        <div class="lat-row">
-          <input class="lat-proxy" id="baLatProxy" placeholder="健康检查 · /health 延迟" readonly>
-          <button class="lat-btn" id="baLatBtn">测延迟</button>
-        </div>
-        <div class="lat-results" id="baLatResult"><span class="lat-idle">插件链路健康检查延迟</span></div>
-      </div>
-    </section>
-
-    <!-- 中列（链路配置 + 链路监测） -->
-    <div class="mid-col">
-      <section class="panel tilt">
-        <div class="p-head"><span class="tick"></span><h2>链路配置</h2><span class="en">UPLINK</span></div>
-        <div class="p-body">
-          <div class="field-row">
-            <span class="f-label">接口地址<span class="en">BASE URL</span></span>
-            <input class="holo-input" id="baBaseUrl" readonly value="http://127.0.0.1:8891/v1" title="点击复制">
-            <button class="ibtn" id="baCopyUrl">复制</button>
-          </div>
-          <div class="field-row">
-            <span class="f-label">API 密钥<span class="en">API KEY</span></span>
-            <input class="holo-input" id="baApiKey" placeholder="填 b.ai API Key · 仅存本地，用于拉取模型矩阵" autocomplete="off">
-            <button class="ibtn" id="baSaveKey">保存</button>
-          </div>
-          <div class="field-row"><span class="f-label">上游<span class="en">UPSTREAM</span></span><input class="holo-input" value="https://api.b.ai（Go 栈转发）" readonly><button class="ibtn">—</button></div>
-        </div>
-      </section>
-
-      <section class="panel telemetry tilt">
-        <div class="p-head"><span class="tick"></span><h2>链路监测</h2><span class="en">TELEMETRY</span>
-          <button class="ibtn" id="baRefresh" style="margin-left:10px">↻ 刷新</button></div>
-        <div class="p-body">
-          <div class="stat-grid">
-            <div class="stat-card"><div class="k">模型数<span class="en">MODELS</span></div><div><span class="v" id="baStModels">—</span></div><div class="sub" id="baStModelsSub">真实可用</div></div>
-            <div class="stat-card vio"><div class="k">健康检查<span class="en">HEALTH</span></div><div><span class="v" id="baStHealth">—</span><span class="u">ms</span></div><div class="sub" id="baStHealthSub">本地回环</div></div>
-          </div>
-        </div>
-      </section>
-    </div>
-
-    <!-- 模型矩阵（厂商分组，同主界面） -->
-    <section class="panel models-panel tilt">
-      <div class="p-head"><span class="tick"></span><h2>模型矩阵</h2><span class="en" id="baModelCount">OFFLINE</span></div>
-      <div class="p-body" id="baModelList"><div class="models-empty">// 启动插件后自动拉取</div></div>
-    </section>
-  </main>
-
-  <!-- 底部双栏（插件日志 + 模型参数） -->
-  <footer class="deck-bottom">
-    <section class="panel console-panel tilt">
-      <div class="console-head">
-        <h2>插件日志</h2><span class="en">PLUGIN LOG</span>
-        <div class="console-actions">
-          <button class="cbtn" id="baClearLog">清空</button>
-        </div>
-      </div>
-      <div class="log-stream" id="baLog"></div>
-    </section>
-    <section class="panel tilt">
-      <div class="console-head"><span class="tick"></span><h2>各模型消耗 TOP</h2><span class="en">MODEL USAGE</span></div>
-      <div class="bars-wrap" id="baBars"><div class="bars-empty">// 插件启动后自动统计流经数据</div></div>
-    </section>
-  </footer>
-</div>
-
 <div class="app" id="viewNotion" style="display:none">
   <header class="topbar">
     <div class="logo">
@@ -2241,7 +2129,6 @@ function switchView(v){
   $("viewCommand").style.display = v === "command" ? "" : "none";
   $("viewTuanjie").style.display = v === "tuanjie" ? "" : "none";
   $("viewCodebuddy").style.display = v === "codebuddy" ? "" : "none";
-  $("viewBai").style.display = v === "bai" ? "" : "none";
   $("viewNotion").style.display = v === "notion" ? "" : "none";
   $("viewLingxi").style.display = v === "lingxi" ? "" : "none";
   document.querySelectorAll(".vtab").forEach(t=>t.classList.toggle("active", t.dataset.view === v));
@@ -2284,11 +2171,6 @@ const PLUGIN_VIEWS = {
   codebuddy: { pfx: "cb", id: "codebuddy", port: 8787, name: "WorkBuddy",
                phases: { idle:{big:"系统待命",sub:"CORE STANDBY"},
                          starting:{big:"点火序列",sub:"IGNITION SEQUENCE · 探测模型中"},
-                         running:{big:"核心在线",sub:"LINK ONLINE · STREAMING"},
-                         stopping:{big:"停止序列",sub:"CORE SHUTDOWN"} } },
-  bai:       { pfx: "ba", id: "bai", port: 8891, name: "B.AI",
-               phases: { idle:{big:"系统待命",sub:"CORE STANDBY"},
-                         starting:{big:"点火序列",sub:"IGNITION SEQUENCE"},
                          running:{big:"核心在线",sub:"LINK ONLINE · STREAMING"},
                          stopping:{big:"停止序列",sub:"CORE SHUTDOWN"} } },
 };
@@ -2404,21 +2286,6 @@ Object.keys(PLUGIN_VIEWS).forEach(function(k){
     btn.disabled = false; btn.textContent = "测延迟";
   };
 });
-
-// B.AI 视图：API Key 保存/回显（localStorage key=baKey，仅前端使用，
-// 用于模型矩阵 /v1/models 请求带 Authorization 头；不落盘到仓库/日志）。
-(function(){
-  const key = $("baApiKey");
-  if (!key) return;
-  key.value = localStorage.getItem("baKey") || "";
-  const save = $("baSaveKey");
-  if (save) save.onclick = function(){
-    localStorage.setItem("baKey", key.value.trim());
-    plog(PLUGIN_VIEWS.bai, "ok", "API Key 已保存（仅存本地，用于拉取模型矩阵）");
-    refreshPluginView("bai");
-  };
-  key.onkeydown = function(e){ if (e.key === "Enter" && save) save.onclick(); };
-})();
 
 // 模型矩阵（厂商/系列分组 + chips，同主界面逻辑）
 const PLUGIN_VENDOR_COLORS = {"glm":"#ff6b9d","kimi":"#b06bff","deepseek":"#4d8dff","minimax":"#ffb300","hy3":"#00ffa3","codely":"#00d4ff","auto":"#7c9dff","claude":"#ff9d6b","openai":"#6bff9d","gemini":"#6bd9ff","xai":"#d9ff6b"};
@@ -2596,19 +2463,7 @@ async function loadNotionSpaces(){
   };
 })();
 async function loadPluginModels(V){
-  // B.AI：/v1/models 需要带 API Key 才会返回列表；无 key 时显示空态提示，不报错。
   let headers = {};
-  if (V.id === "bai"){
-    const key = (localStorage.getItem("baKey")||"").trim();
-    if (!key){
-      $(V.pfx+"ModelCount").textContent = "0 MODELS";
-      $(V.pfx+"ModelList").innerHTML = '<div class="models-empty">// 填入 API Key（链路配置 · API KEY）后自动拉取模型</div>';
-      pSet(V, "StModels", "0");
-      V.lastModels = null;
-      return;
-    }
-    headers = { "Authorization": "Bearer " + key };
-  }
   try{
     const r = await fetch("http://127.0.0.1:"+V.port+"/v1/models", {headers: headers});
     const d = await r.json();

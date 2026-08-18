@@ -45,11 +45,6 @@ var pluginDefs = []pluginDef{
 		Native: "lingxi",
 		Port: 8790, Health: "/health",
 	},
-	{
-		ID: "bai", Name: "B.AI",
-		Native: "bai",
-		Port: 8891, Health: "/health",
-	},
 }
 
 type pluginState struct {
