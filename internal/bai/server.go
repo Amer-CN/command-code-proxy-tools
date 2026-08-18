@@ -1,8 +1,10 @@
 package bai
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -66,9 +68,9 @@ func (s *Server) Start(host, port string) error {
 		req.URL.Host = target.Host
 		req.Host = target.Host // 必须改：Cloudflare 对未知 Host 直接 403
 	}
-	// api.b.ai 对某些网络（尤其国内直连）是间歇性失败的（连接层 000 / 502 波动）。
-	// 对可安全重发的请求（请求体为空，如 GET /v1/models、/health 等）做自动重试，
-	// 跳过抖动窗口；带请求体的 POST（聊天/流式）不做应用层重试，避免重复计费。
+	// api.b.ai 对某些网络（尤其国内直连）是间歇性失败的：连接层错误 / Cloudflare 520。
+	// 520/502/503 意味着请求没到模型层（无计费），重放安全。
+	// 前置 bufferBody 把请求体缓存为可重放（GetBody），POST 也能自动重试。
 	retry := &retryRoundTripper{transport: http.DefaultTransport, max: 3}
 	proxy := &httputil.ReverseProxy{
 		Director:      director,
@@ -87,12 +89,33 @@ func (s *Server) Start(host, port string) error {
 		return fmt.Errorf("端口 %s 被占用: %w", port, err)
 	}
 	s.ln = ln
-	s.srv = &http.Server{Handler: corsWith(mux)}
+	s.srv = &http.Server{Handler: corsWith(bufferBody(mux))}
 	return s.srv.Serve(ln)
 }
 
-// retryRoundTripper 对可安全重放的请求做有限次连接/5xx 重试。
-// 只在「请求体为空」时启用（GET 等幂等请求）；带 body 的请求原样单发。
+// bufferBody 把带请求体的请求读入内存并设 GetBody（可重放），重试的前提。
+// 聊天请求都是小 JSON（< 数 MB），缓冲代价可忽略；超限（>32MB）或读取失败的不缓冲（单发）。
+func bufferBody(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Body == nil || r.Method == http.MethodGet || r.Method == http.MethodHead {
+			next.ServeHTTP(w, r)
+			return
+		}
+		const limit = 32 << 20
+		buf, err := io.ReadAll(io.LimitReader(r.Body, limit+1))
+		_ = r.Body.Close()
+		r.Body = io.NopCloser(bytes.NewReader(buf))
+		if err == nil && len(buf) <= limit {
+			r.GetBody = func() (io.ReadCloser, error) {
+				return io.NopCloser(bytes.NewReader(buf)), nil
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// retryRoundTripper 对可重放的请求做有限次重试：传输错误 / 5xx（含 Cloudflare 520）。
+// 只在请求体可重放（GetBody 非空或无请求体）时重试；4xx 不重试（真实 API 应答）。
 type retryRoundTripper struct {
 	transport http.RoundTripper
 	max       int
@@ -102,22 +125,29 @@ func (r *retryRoundTripper) RoundTrip(req *http.Request) (*http.Response, error)
 	if req.Body != nil && req.GetBody == nil {
 		return r.transport.RoundTrip(req) // 不可重放：单发
 	}
-	var (
-		lastResp *http.Response
-		lastErr  error
-	)
+	var lastErr error
 	for i := 0; i < r.max; i++ {
-		lastResp, lastErr = r.transport.RoundTrip(req)
-		if lastErr == nil && lastResp != nil && lastResp.StatusCode < 500 {
-			return lastResp, nil // 成功或 4xx（不重试）
+		last := i == r.max-1
+		if i > 0 && req.GetBody != nil {
+			if nb, err := req.GetBody(); err == nil {
+				req.Body = nb
+			}
 		}
-		if lastErr == nil && lastResp != nil {
-			_ = lastResp.Body.Close() // 5xx：关闭后重试
+		resp, err := r.transport.RoundTrip(req)
+		if err != nil {
+			lastErr = err
+			if last {
+				return nil, err
+			}
+			time.Sleep(300 * time.Millisecond)
+			continue
 		}
+		if resp.StatusCode < 500 || last {
+			return resp, nil
+		}
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 8192)) // 5xx：丢弃响应体后重试
+		_ = resp.Body.Close()
 		time.Sleep(300 * time.Millisecond)
-	}
-	if lastResp != nil {
-		return lastResp, nil
 	}
 	return nil, lastErr
 }
