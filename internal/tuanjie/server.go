@@ -420,6 +420,14 @@ func (s *Server) handleChat(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, resp.StatusCode, string(errBody))
 		return
 	}
+
+	// 200 但内容为空（上游过载时偶发，ZCode 侧表现为 empty_model_response）：
+	// 在写给客户端之前嗅探，空则丢弃本次响应重放一次。
+	if !s.ensureNonEmpty(wantsStream, &resp, send, model) {
+		writeErr(w, 502, "上游连续返回空响应（GLM-5.3 过载），请稍后重试")
+		return
+	}
+
 	defer resp.Body.Close()
 	log.Printf("[tuanjie] chat model=%s status=200 dur=%s", model, time.Since(start).Round(time.Millisecond))
 
@@ -592,6 +600,117 @@ func retriableUpstream(body string) bool {
 		strings.Contains(low, "504") ||
 		strings.Contains(low, "bad gateway") ||
 		strings.Contains(low, "internal server")
+}
+
+// ensureNonEmpty 在响应写给客户端前嗅探"200 但内容为空"（上游过载偶发），
+// 空则丢弃本次响应并重放一次（send 复用已缓存的请求体）。
+// 返回 false 表示重放后仍为空（此时原 resp 已关闭，调用方只能报错）。
+// 非空时 *resp 指向可正常读的响应（嗅探字节已拼回头部，不丢数据）。
+func (s *Server) ensureNonEmpty(stream bool, resp **http.Response, send func() (*http.Response, error), model string) bool {
+	for attempt := 0; attempt < 2; attempt++ {
+		r := *resp
+		if r == nil || r.Body == nil {
+			return false
+		}
+		var head []byte
+		if stream {
+			// 流式：读首段最多 64KB，判断是否出现非空 delta（content/reasoning_content 有实际字符）。
+			// 用 MultiReader 把嗅探字节拼回去，确认非空后客户端看到的数据完整无缺。
+			buf := make([]byte, 64*1024)
+			deadline := time.Now().Add(3 * time.Second)
+			for len(head) < 64*1024 && time.Now().Before(deadline) {
+				n, err := r.Body.Read(buf)
+				head = append(head, buf[:n]...)
+				if streamHasContent(head) || err != nil {
+					break
+				}
+			}
+			if streamHasContent(head) {
+				r.Body = io.NopCloser(io.MultiReader(bytes.NewReader(head), r.Body))
+				return true
+			}
+			log.Printf("[tuanjie] chat model=%s status=200 空流式响应，重放 %d/1", model, attempt+1)
+		} else {
+			// 非流式：整体读出，检查 choices[].message 内容与 tool_calls。
+			b, _ := io.ReadAll(io.LimitReader(r.Body, 64<<20))
+			_ = r.Body.Close()
+			head = b
+			if nonStreamHasContent(b) {
+				r.Body = io.NopCloser(bytes.NewReader(b))
+				return true
+			}
+			log.Printf("[tuanjie] chat model=%s status=200 空响应，重放 %d/1", model, attempt+1)
+		}
+		// 本次响应为空：关闭并重放
+		_ = r.Body.Close()
+		time.Sleep(400 * time.Millisecond)
+		nr, err := send()
+		if err != nil || nr == nil || nr.StatusCode != http.StatusOK {
+			if nr != nil {
+				_ = nr.Body.Close()
+			}
+			return false
+		}
+		*resp = nr
+	}
+	return false
+}
+
+// streamHasContent 判断 SSE 首段里是否出现实际生成内容（content 或 reasoning 有非空增量）。
+func streamHasContent(head []byte) bool {
+	for _, line := range bytes.Split(head, []byte("\n")) {
+		line = bytes.TrimSpace(line)
+		if !bytes.HasPrefix(line, []byte("data:")) {
+			continue
+		}
+		payload := bytes.TrimSpace(line[5:])
+		if len(payload) == 0 || bytes.Equal(payload, []byte("[DONE]")) {
+			continue
+		}
+		var chunk struct {
+			Choices []struct {
+				Delta struct {
+					Content   string `json:"content"`
+					Reasoning string `json:"reasoning_content"`
+				} `json:"delta"`
+				Message struct {
+					Content   string `json:"content"`
+					Reasoning string `json:"reasoning_content"`
+				} `json:"message"`
+			} `json:"choices"`
+		}
+		if json.Unmarshal(payload, &chunk) != nil {
+			continue
+		}
+		for _, c := range chunk.Choices {
+			if c.Delta.Content != "" || c.Delta.Reasoning != "" ||
+				c.Message.Content != "" || c.Message.Reasoning != "" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// nonStreamHasContent 判断非流式响应是否有实际内容或工具调用。
+func nonStreamHasContent(body []byte) bool {
+	var done struct {
+		Choices []struct {
+			Message struct {
+				Content   string          `json:"content"`
+				ToolCalls json.RawMessage `json:"tool_calls"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if json.Unmarshal(body, &done) != nil {
+		return len(bytes.TrimSpace(body)) > 0 // 解析失败：有字节就放行（让客户端自己判断）
+	}
+	for _, c := range done.Choices {
+		if c.Message.Content != "" || len(c.Message.ToolCalls) > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 func copyHeader(w http.ResponseWriter, resp *http.Response) {
