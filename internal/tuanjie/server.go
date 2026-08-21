@@ -26,6 +26,7 @@ type Server struct {
 	statsMu   sync.Mutex
 	stats     map[string]*modelStat // 按模型累计（GUI 消耗 TOP 展示）
 	statsPath string
+	pacer     *Pacer // KIMI-K3 节奏器（可开关，GUI 经 /kimi-pacing 控制）
 }
 
 // modelStat 单模型用量累计。
@@ -38,7 +39,7 @@ type modelStat struct {
 
 // NewServer 创建服务。
 func NewServer() *Server {
-	s := &Server{client: NewClient(), stats: map[string]*modelStat{}, startedAt: time.Now()}
+	s := &Server{client: NewClient(), stats: map[string]*modelStat{}, startedAt: time.Now(), pacer: NewPacer()}
 	if exe, err := os.Executable(); err == nil {
 		s.statsPath = filepath.Join(filepath.Dir(exe), "tuanjie-stats.json")
 		s.loadStats()
@@ -69,6 +70,7 @@ func (s *Server) Start(host, port string) error {
 	mux.HandleFunc("/model/info", s.handleModelInfo)
 	mux.HandleFunc("/v1/stats", s.handleStats)
 	mux.HandleFunc("/quota", s.handleQuota)
+	mux.HandleFunc("/kimi-pacing", s.handleKimiPacing)
 	mux.HandleFunc("/v1/chat/completions", s.handleChat)
 
 	ln, err := net.Listen("tcp", net.JoinHostPort(host, port))
@@ -396,9 +398,41 @@ func (s *Server) handleChat(w http.ResponseWriter, r *http.Request) {
 		return s.client.Forward(r.Context(), http.MethodPost, "/v1/chat/completions", bytes.NewReader(body), r.Header.Get("Content-Type"))
 	}
 
-	// 上游多实例可能未同步模型映射（间歇 400 model=None）→ 最多重试 3 次
+	// KIMI-K3 节奏器（可开关）：开启且 model 含 "KIMI" 时放行前按滑窗预算排队
+	// （预算不足挂起等待而非立即 429）；关闭时零影响直通。
+	pacing := s.pacer.Enabled() && IsPacingModel(model)
+	pacingDeadline := time.Time{}
+	if pacing {
+		est := EstimateTokens(body)
+		pacingDeadline = s.pacer.Acquire(r.Context(), est)
+		log.Printf("[tuanjie] pacing model=%s est=%d windowUsed=%d 放行", model, est, s.pacer.WindowUsed())
+	}
+
+	// 上游多实例可能未同步模型映射（间歇 400 model=None）→ 最多重试 3 次。
 	var errBody []byte
 	resp, err := send()
+	// 节奏器 429 兜底：pacing 开启时代为等待自动重发（客户端只看到慢请求），
+	// 重发共用同一 30 分钟总预算，超限后透传最后一次原始错误。
+	for pacing && err == nil && resp != nil && resp.StatusCode == http.StatusTooManyRequests && time.Now().Before(pacingDeadline) {
+		errBody, _ = io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+		resp.Body.Close()
+		wait := RateLimitWait(string(errBody))
+		if end := time.Now().Add(wait); end.After(pacingDeadline) {
+			wait = time.Until(pacingDeadline)
+			if wait <= 0 {
+				break
+			}
+		}
+		log.Printf("[tuanjie] pacing model=%s status=429 等待 %s 后重发（剩余预算 %s）", model, wait.Round(time.Second), time.Until(pacingDeadline).Round(time.Second))
+		select {
+		case <-r.Context().Done():
+		case <-time.After(wait):
+			resp, err = send()
+		}
+		if r.Context().Err() != nil {
+			break
+		}
+	}
 	for attempt := 0; resp != nil && resp.StatusCode != http.StatusOK && attempt < 3; attempt++ {
 		errBody, _ = io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 		resp.Body.Close()
@@ -566,6 +600,28 @@ func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) {
 // handleQuota 返回团结积分快照（GUI 链路监测积分卡）。
 func (s *Server) handleQuota(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, s.client.FetchQuota(r.Context()))
+}
+
+// handleKimiPacing 节奏器开关端点（GUI 团结视图一键切换）：
+// GET 返回 {"enabled","pending","windowUsed"}；POST {"enabled":bool} 切换并
+// 持久化到 exe 同目录 tuanjie-pacing.json（重启记忆）。
+func (s *Server) handleKimiPacing(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost {
+		var req struct {
+			Enabled *bool `json:"enabled"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Enabled == nil {
+			writeErr(w, 400, "body 需为 {\"enabled\":true|false}")
+			return
+		}
+		s.pacer.SetEnabled(*req.Enabled)
+		log.Printf("[tuanjie] pacing 开关切换 enabled=%v", *req.Enabled)
+	}
+	writeJSON(w, map[string]any{
+		"enabled":    s.pacer.Enabled(),
+		"pending":    s.pacer.Pending(),
+		"windowUsed": s.pacer.WindowUsed(),
+	})
 }
 
 // loadStats 启动时读回历史统计。

@@ -100,6 +100,13 @@ body{
 .state-pill.error{border-color:rgba(255,61,90,.5);color:#ff9fb0}
 .state-pill.error .pdot{background:var(--red);box-shadow:0 0 10px var(--red)}
 @keyframes blink{to{opacity:.35}}
+/* KIMI-K3 节奏器开关（团结视图 header，与 ver-chip/state-pill 协调的深色科幻风） */
+.k3-pacing-btn{font-family:var(--mono);font-size:12px;line-height:1;color:var(--dim);border:1px solid var(--line2);
+  padding:6px 11px;border-radius:3px;letter-spacing:1px;background:rgba(124,77,255,.06);cursor:pointer;transition:all .2s;white-space:nowrap}
+.k3-pacing-btn:hover{color:#fff;border-color:rgba(0,229,255,.5);box-shadow:0 0 12px rgba(0,229,255,.2)}
+.k3-pacing-btn.on{color:#8affd8;border-color:rgba(0,255,163,.45);background:rgba(0,255,163,.08)}
+.k3-pacing-btn.on:hover{color:#fff;box-shadow:0 0 12px rgba(0,255,163,.25)}
+.k3-pacing-btn:disabled{opacity:.55;cursor:default}
 
 /* ============ 主区网格 ============ */
 .deck{flex:1;display:grid;grid-template-columns:400px minmax(0,1fr) 360px;gap:14px;padding:14px 16px;min-height:0}
@@ -732,6 +739,7 @@ body{
     <div class="spacer"></div>
     <span class="ver-chip" title="插件标识">PLUGIN <b>TUANJIE</b></span>
     <button class="gear-btn" title="设置" onclick="openSettings()" aria-label="设置">⚙</button>
+    <button class="k3-pacing-btn" id="tjPacingBtn" title="KIMI-K3 限流排队：开启后 8788 自动等待窗口，避免 429 重试">K3 节奏 ⏱ · —</button>
     <div class="state-pill idle" id="tjPill"><span class="pdot"></span><span id="tjPillText">待命</span></div>
   </header>
 
@@ -2209,6 +2217,7 @@ async function refreshPluginView(view){
     loadPluginMeta(V);
     loadPluginStats(V);
     loadPluginLog(V);
+    if (view === "tuanjie") loadTuanjiePacing();
     if (view === "notion") loadNotionToken(V);
     if (view === "lingxi") loadLingxiQuota(V);
   } else {
@@ -2286,6 +2295,44 @@ Object.keys(PLUGIN_VIEWS).forEach(function(k){
     btn.disabled = false; btn.textContent = "测延迟";
   };
 });
+
+// 团结：KIMI-K3 节奏器开关（GET /kimi-pacing 读状态，POST 切换并持久化）
+async function loadTuanjiePacing(){
+  const btn = $("tjPacingBtn");
+  if (!btn) return;
+  try{
+    const st = await (await fetch("http://127.0.0.1:8788/kimi-pacing")).json();
+    renderTuanjiePacing(st);
+  }catch(e){}   // 插件未启动：保持上次显示，不打断轮询
+}
+function renderTuanjiePacing(st){
+  const btn = $("tjPacingBtn");
+  if (!btn) return;
+  const on = !!st.enabled;
+  btn.classList.toggle("on", on);
+  const used = typeof st.windowUsed === "number" ? Math.round(st.windowUsed/1000) + "K" : "—";
+  const pend = typeof st.pending === "number" && st.pending > 0 ? " · 队列" + st.pending : "";
+  btn.textContent = "K3 节奏 ⏱ · " + (on ? "开" : "关") + " · " + used + pend;
+}
+(function(){
+  const btn = $("tjPacingBtn");
+  if (!btn) return;
+  btn.onclick = async function(){
+    btn.disabled = true;
+    try{
+      const st = await (await fetch("http://127.0.0.1:8788/kimi-pacing")).json();
+      const r = await (await fetch("http://127.0.0.1:8788/kimi-pacing", {
+        method: "POST", headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({enabled: !st.enabled})
+      })).json();
+      renderTuanjiePacing(r);
+      plog(PLUGIN_VIEWS.tuanjie, r.enabled ? "ok" : "sys", r.enabled ? "KIMI-K3 节奏器已开启：自动等待窗口，避免 429" : "KIMI-K3 节奏器已关闭：429 直接透传");
+    }catch(e){
+      plog(PLUGIN_VIEWS.tuanjie, "err", "节奏器切换失败（插件未启动？）");
+    }
+    btn.disabled = false;
+  };
+})();
 
 // 模型矩阵（厂商/系列分组 + chips，同主界面逻辑）
 const PLUGIN_VENDOR_COLORS = {"glm":"#ff6b9d","kimi":"#b06bff","deepseek":"#4d8dff","minimax":"#ffb300","hy3":"#00ffa3","codely":"#00d4ff","auto":"#7c9dff","claude":"#ff9d6b","openai":"#6bff9d","gemini":"#6bd9ff","xai":"#d9ff6b"};
