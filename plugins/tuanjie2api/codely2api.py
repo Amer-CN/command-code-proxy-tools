@@ -12,6 +12,9 @@ codely2api - 把团结 Cowork (Codely) 的登录态转成 OpenAI 兼容 API。
 - GET  /health
 """
 
+import base64
+import hashlib
+import hmac
 import json
 import os
 import time
@@ -28,6 +31,10 @@ LITELLM_API_BASE = "https://codely-litellm.tuanjie.cn"
 CLI_API_KEY_FETCH_URL = f"{CODELY_API_BASE}/api/api-token/cli-api-key"
 LISTEN_HOST = "127.0.0.1"
 LISTEN_PORT = 8788
+
+# 官方 CLI 内置的签名种子（逆向自 1.0.0-release.52），与 cli_api_key 两层 HMAC 派生签名密钥
+CODELY_SIGNING_SEED = bytes.fromhex("406f00f74768ba0cb0cd30f097ec6c2bdacb89c61a38b7dd140838bbd0e98018")
+CLI_USER_AGENT = "codely-cli/1.0.0-release.52 (win32; x64)"
 
 # ============ State ============
 app = FastAPI(title="codely2api")
@@ -91,14 +98,27 @@ def get_cli_api_key() -> str:
     return key
 
 
-def build_litellm_headers(cli_api_key: str, extra: dict = None) -> dict:
-    """Build headers that mimic codely CLI to satisfy LiteLLM proxy."""
+def make_codely_signature(path: str, cli_api_key: str, timestamp_secs: int) -> str:
+    """生成 X-Codely-Signature 头值：v1.<秒级时间戳>.<base64url 签名>。
+
+    消息体为 "v1\\n<path>\\n<timestamp>"（只签 path），与官方 CLI 1.0.0-release.52 一致。
+    """
+    k1 = hmac.new(CODELY_SIGNING_SEED, b"codely-signing-v1", hashlib.sha256).digest()
+    signing_key = hmac.new(k1, cli_api_key.encode(), hashlib.sha256).digest()
+    msg = f"v1\n{path}\n{timestamp_secs}".encode()
+    sig = hmac.new(signing_key, msg, hashlib.sha256).digest()
+    return f"v1.{timestamp_secs}.{base64.urlsafe_b64encode(sig).rstrip(b'=').decode()}"
+
+
+def build_litellm_headers(cli_api_key: str, path: str, extra: dict = None) -> dict:
+    """Build headers that mimic codely CLI to satisfy LiteLLM proxy. path 参与签名。"""
     headers = {
         "Authorization": f"Bearer {cli_api_key}",
         "Content-Type": "application/json",
         "Accept": "application/json",
-        "User-Agent": "codely-cli/1.0.0-release.43 (win32; x64)",
+        "User-Agent": CLI_USER_AGENT,
         "x-litellm-session-id": str(uuid.uuid4()),
+        "X-Codely-Signature": make_codely_signature(path, cli_api_key, int(time.time())),
     }
     if extra:
         headers.update(extra)
@@ -126,7 +146,7 @@ async def health():
 @app.get("/v1/models")
 async def list_models():
     key = get_cli_api_key()
-    headers = build_litellm_headers(key)
+    headers = build_litellm_headers(key, "/v1/models")
     async with httpx.AsyncClient() as client:
         resp = await client.get(
             f"{LITELLM_API_BASE}/v1/models",
@@ -140,7 +160,7 @@ async def list_models():
 async def chat_completions(request: Request):
     body = await request.json()
     key = get_cli_api_key()
-    headers = build_litellm_headers(key)
+    headers = build_litellm_headers(key, "/v1/chat/completions")
     
     is_stream = body.get("stream", False)
     

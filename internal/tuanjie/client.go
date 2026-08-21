@@ -8,6 +8,10 @@ package tuanjie
 import (
 	"bytes"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,6 +19,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"time"
 
@@ -25,10 +30,14 @@ const (
 	codelyAPIBase   = "https://codely.tuanjie.cn"
 	litellmAPIBase  = "https://codely-litellm.tuanjie.cn"
 	cliAPIKeyURL    = codelyAPIBase + "/api/api-token/cli-api-key"
-	cliUserAgent    = "codely-cli/1.0.0-release.43 (win32; x64)"
+	cliUserAgent    = "codely-cli/1.0.0-release.52 (win32; x64)"
 	keyCacheTTL     = time.Hour
 	defaultTimeout  = 300 * time.Second
 	keyFetchTimeout = 15 * time.Second
+
+	// codelySigningSeedHex 是官方 CLI 内置的签名种子（逆向自 1.0.0-release.52），
+	// 与 cli_api_key 两层 HMAC 派生签名密钥。
+	codelySigningSeedHex = "406f00f74768ba0cb0cd30f097ec6c2bdacb89c61a38b7dd140838bbd0e98018"
 )
 
 // Client 是团结 LiteLLM 的转发客户端（线程安全）。
@@ -144,14 +153,37 @@ func (c *Client) InvalidateKey() {
 // 固定 id 可避免每次请求都新建会话带来的上游不确定性。
 var litellmSessionID = uuid.New().String()
 
-// litellmHeaders 构造伪装 codely CLI 的请求头。
-func (c *Client) litellmHeaders(key string) http.Header {
+func hmacSHA256(key, msg []byte) []byte {
+	m := hmac.New(sha256.New, key)
+	m.Write(msg)
+	return m.Sum(nil)
+}
+
+// codelySigningKey 从 cli_api_key 派生签名密钥（两层 HMAC，与官方 CLI 一致）。
+func codelySigningKey(cliAPIKey string) []byte {
+	seed, _ := hex.DecodeString(codelySigningSeedHex)
+	k1 := hmacSHA256(seed, []byte("codely-signing-v1"))
+	return hmacSHA256(k1, []byte(cliAPIKey))
+}
+
+// SignLitellm 生成 X-Codely-Signature 头值：v1.<秒级时间戳>.<base64url 签名>。
+// 消息体为 "v1\n<path>\n<timestamp>"（只签 path），时间戳每请求实时取。
+func SignLitellm(path, cliAPIKey string, now time.Time) string {
+	ts := strconv.FormatInt(now.Unix(), 10)
+	msg := "v1\n" + path + "\n" + ts
+	sig := hmacSHA256(codelySigningKey(cliAPIKey), []byte(msg))
+	return "v1." + ts + "." + base64.RawURLEncoding.EncodeToString(sig)
+}
+
+// litellmHeaders 构造伪装 codely CLI 的请求头。path 参与签名，是上游路径。
+func (c *Client) litellmHeaders(path, key string) http.Header {
 	h := http.Header{}
 	h.Set("Authorization", "Bearer "+key)
 	h.Set("Content-Type", "application/json")
 	h.Set("Accept", "application/json")
 	h.Set("User-Agent", cliUserAgent)
 	h.Set("x-litellm-session-id", litellmSessionID)
+	h.Set("X-Codely-Signature", SignLitellm(path, key, time.Now()))
 	return h
 }
 
@@ -176,7 +208,7 @@ func (c *Client) Forward(ctx context.Context, method, path string, bodyIn io.Rea
 		if err != nil {
 			return nil, err
 		}
-		for k, vs := range c.litellmHeaders(key) {
+		for k, vs := range c.litellmHeaders(path, key) {
 			for _, v := range vs {
 				req.Header.Add(k, v)
 			}
