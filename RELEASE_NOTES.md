@@ -3,6 +3,11 @@
 给 [command-code-proxy-server](https://github.com/dev2k6/command-code-proxy-server)（原作者 **dev2k6**，本仓库核心代码来自上游）
 做的 Windows 便携工具：本地代理 + 科幻全息控制台 + 一键启停 + 开机自启。
 
+## v2.5.3（2026-08-21）—— 流式响应误判修复
+
+- **修复**：流式请求空响应嗅探不再用 3 秒窗口判定（GLM-5.3 复杂请求首个内容 chunk 延迟超过 3 秒时被误判为空流并强制重放，客户端表现为 ECONNRESET/超时）
+- 现在仅在流读到 EOF 仍无任何内容时才重放；慢启动的正常流直接放行透传
+
 ## v2.5.2（2026-08-21）—— 团结签名适配 · chat 可靠性
 
 - **适配团结 LiteLLM 安全校验**：上游（约 2026-08-21 起）强制校验 `X-Codely-Signature` 请求头，缺失返回 401「由于安全问题，请升级到最新版 Codely」。自动生成签名（算法逆向自官方客户端 codely-cli 1.0.0-release.52），User-Agent 同步升级
