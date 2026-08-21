@@ -588,7 +588,7 @@ body{
 
   <!-- 版本更新提示（检查到新 Release 时显示） -->
   <div class="upd-banner" id="updBanner" style="display:none">
-    <span>⚡ <b id="updTitle">发现新版本</b> <b id="updVer">—</b>（当前 <b id="updCur">v2.5.1</b>）</span>
+    <span>⚡ <b id="updTitle">发现新版本</b> <b id="updVer">—</b>（当前 <b id="updCur">v2.5.2</b>）</span>
     <a id="updGo" href="#">前往下载 →</a>
   </div>
 
@@ -1257,7 +1257,7 @@ const demo = {
   async getState(){ return { running:demoRunning, external:false,
     phase: demoRunning?"running":"idle", port:"55990", host:"127.0.0.1",
     baseUrl:"http://127.0.0.1:55990/v1", uptime: demoRunning? Math.floor((Date.now()-demoStartAt)/1000):0,
-    autostart:false, apiKey:"", noticeDismissed:false, version:"v2.5.1", core:"v1.2.0", pid:12345 }; },
+    autostart:false, apiKey:"", noticeDismissed:false, version:"v2.5.2", core:"v1.2.0", pid:12345 }; },
   async start(){ demoRunning=true; demoStartAt=Date.now(); return {ok:true,msg:"模拟点火成功"}; },
   async stop(){ demoRunning=false; return {ok:true,msg:"模拟停堆"}; },
   async stats(){ if(!demoRunning) return {ok:false};
@@ -1763,7 +1763,7 @@ $("helpBtn").onclick = ()=>openModal(HELP_HTML);
 $("modelRefBtn").onclick = ()=>openModal(REF_HTML);
 
 /* ---------------- 设置面板 ---------------- */
-const UI_CUR = "v2.5.1";
+const UI_CUR = "v2.5.2";
 // 累计下载显示补"9"：与历史版本顶栏 chip 的视觉一致（真实数字末位补 9）。
 const pad9 = n => (n > 0 ? String(n) + "9" : "0");
 let _chkRetries = 0;  // checkUpdateNow 的"checking"重试计数（每次点击重置）
@@ -1919,7 +1919,7 @@ function showUpdResult(latest, url){
 /* ---------------- 启动画面 ---------------- */
 (function boot(){
   const lines = [
-    ["COMMANDCODE PROXY DECK v2.5.1", 0],
+    ["COMMANDCODE PROXY DECK v2.5.2", 0],
     ["初始化神经链路 ......... <span class='ok'>OK</span>", 110],
     ["装载代理核心 v1.2.0 .... <span class='ok'>OK</span>", 120],
     ["装载全息界面 ........... <span class='ok'>OK</span>", 120],
@@ -1961,7 +1961,7 @@ function verCmp(a, b){
 // 失败时先用上次缓存值显示，并定时重试直到成功。
 (async function checkUpdate(){
   if (!HAS_BRIDGE) return;
-  const cur = "v2.5.1";
+  const cur = "v2.5.2";
   // 下载量缓存：结果统一存全局 window._UPDATE 供设置面板读取（顶栏 chip 已移除）。
   // 本地从未成功获取过（如 API 限流/离线）时，用发布时记录的已知值兜底——
   // 保证界面上始终有数可看，数据不是最新也没关系，恢复后自动刷新。
