@@ -407,7 +407,7 @@ func (s *Server) handleChat(w http.ResponseWriter, r *http.Request) {
 		}
 		log.Printf("[tuanjie] chat model=%s status=%d 重试 %d/3 err=%s", model, resp.StatusCode, attempt+1, truncate(string(errBody), 200))
 		s.client.InvalidateKey()
-		time.Sleep(300 * time.Millisecond)
+		time.Sleep(800 * time.Millisecond)
 		resp, err = send()
 	}
 	if err != nil {
@@ -641,9 +641,9 @@ func (s *Server) ensureNonEmpty(stream bool, resp **http.Response, send func() (
 			}
 			log.Printf("[tuanjie] chat model=%s status=200 空响应，重放 %d/1", model, attempt+1)
 		}
-		// 本次响应为空：关闭并重放
+		// 本次响应为空：关闭并重放（间隔放宽避免误判时连发刺激上游）
 		_ = r.Body.Close()
-		time.Sleep(400 * time.Millisecond)
+		time.Sleep(1500 * time.Millisecond)
 		nr, err := send()
 		if err != nil || nr == nil || nr.StatusCode != http.StatusOK {
 			if nr != nil {
@@ -692,12 +692,13 @@ func streamHasContent(head []byte) bool {
 	return false
 }
 
-// nonStreamHasContent 判断非流式响应是否有实际内容或工具调用。
+// nonStreamHasContent 判断非流式响应是否有实际内容、思考或工具调用。
 func nonStreamHasContent(body []byte) bool {
 	var done struct {
 		Choices []struct {
 			Message struct {
 				Content   string          `json:"content"`
+				Reasoning string          `json:"reasoning_content"`
 				ToolCalls json.RawMessage `json:"tool_calls"`
 			} `json:"message"`
 		} `json:"choices"`
@@ -706,7 +707,7 @@ func nonStreamHasContent(body []byte) bool {
 		return len(bytes.TrimSpace(body)) > 0 // 解析失败：有字节就放行（让客户端自己判断）
 	}
 	for _, c := range done.Choices {
-		if c.Message.Content != "" || len(c.Message.ToolCalls) > 0 {
+		if c.Message.Content != "" || c.Message.Reasoning != "" || len(c.Message.ToolCalls) > 0 {
 			return true
 		}
 	}

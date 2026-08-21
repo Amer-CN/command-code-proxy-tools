@@ -149,10 +149,6 @@ func (c *Client) InvalidateKey() {
 	c.mu.Unlock()
 }
 
-// litellmSessionID 进程内固定会话 id：codely-cli 真实客户端复用同一会话，
-// 固定 id 可避免每次请求都新建会话带来的上游不确定性。
-var litellmSessionID = uuid.New().String()
-
 func hmacSHA256(key, msg []byte) []byte {
 	m := hmac.New(sha256.New, key)
 	m.Write(msg)
@@ -182,7 +178,9 @@ func (c *Client) litellmHeaders(path, key string) http.Header {
 	h.Set("Content-Type", "application/json")
 	h.Set("Accept", "application/json")
 	h.Set("User-Agent", cliUserAgent)
-	h.Set("x-litellm-session-id", litellmSessionID)
+	// session 每请求随机：上游按 session 做实例亲和路由，固定 session 会
+	// 粘死在映射失步的实例上持续 400 model=None（实测 2026-08-21）。
+	h.Set("x-litellm-session-id", uuid.New().String())
 	h.Set("X-Codely-Signature", SignLitellm(path, key, time.Now()))
 	return h
 }
