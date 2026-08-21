@@ -402,6 +402,11 @@ func (s *Server) handleChat(w http.ResponseWriter, r *http.Request) {
 	for attempt := 0; resp != nil && resp.StatusCode != http.StatusOK && attempt < 3; attempt++ {
 		errBody, _ = io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 		resp.Body.Close()
+		// 429 限流：TPM 按模型计数，换 key 无效且重试继续消耗限流窗口；
+		// 不重试、不 InvalidateKey，直接跳出循环进下方非 200 透传分支。
+		if resp.StatusCode == http.StatusTooManyRequests {
+			break
+		}
 		if !retriableUpstream(string(errBody)) {
 			break
 		}
@@ -416,7 +421,17 @@ func (s *Server) handleChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if resp.StatusCode != http.StatusOK {
+		retryAfter := "-"
+		if ra := resp.Header.Get("Retry-After"); ra != "" {
+			retryAfter = ra
+		}
+		if resp.StatusCode == http.StatusTooManyRequests {
+			log.Printf("[tuanjie] chat model=%s status=429 限流透传 retryAfter=%s", model, retryAfter)
+		}
 		log.Printf("[tuanjie] chat model=%s status=%d err=%s", model, resp.StatusCode, truncate(string(errBody), 300))
+		if retryAfter != "-" {
+			w.Header().Set("Retry-After", retryAfter)
+		}
 		writeErr(w, resp.StatusCode, string(errBody))
 		return
 	}
