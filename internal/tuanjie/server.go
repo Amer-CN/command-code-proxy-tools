@@ -614,22 +614,27 @@ func (s *Server) ensureNonEmpty(stream bool, resp **http.Response, send func() (
 		}
 		var head []byte
 		if stream {
-			// 流式：读首段最多 64KB，判断是否出现非空 delta（content/reasoning_content 有实际字符）。
-			// 用 MultiReader 把嗅探字节拼回去，确认非空后客户端看到的数据完整无缺。
+			// 流式：读首段最多 64KB。只把"流到 EOF 仍无任何 data 行"判为空流；
+			// 出现过 data 行（哪怕首个内容 chunk 延迟 >3s）都放行透传，
+			// 否则慢启动的正常流会被误判为空而重放（实测 2026-08-21）。
 			buf := make([]byte, 64*1024)
-			deadline := time.Now().Add(3 * time.Second)
-			for len(head) < 64*1024 && time.Now().Before(deadline) {
+			readErr := error(nil)
+			for len(head) < 64*1024 {
 				n, err := r.Body.Read(buf)
 				head = append(head, buf[:n]...)
-				if streamHasContent(head) || err != nil {
+				if err != nil {
+					readErr = err
+					break
+				}
+				if hasStreamDataLine(head) {
 					break
 				}
 			}
-			if streamHasContent(head) {
+			if streamHasContent(head) || readErr == nil || hasStreamDataLine(head) {
 				r.Body = io.NopCloser(io.MultiReader(bytes.NewReader(head), r.Body))
 				return true
 			}
-			log.Printf("[tuanjie] chat model=%s status=200 空流式响应，重放 %d/1", model, attempt+1)
+			log.Printf("[tuanjie] chat model=%s status=200 空流式响应(EOF无内容)，重放 %d/1", model, attempt+1)
 		} else {
 			// 非流式：整体读出，检查 choices[].message 内容与 tool_calls。
 			b, _ := io.ReadAll(io.LimitReader(r.Body, 64<<20))
@@ -654,6 +659,11 @@ func (s *Server) ensureNonEmpty(stream bool, resp **http.Response, send func() (
 		*resp = nr
 	}
 	return false
+}
+
+// hasStreamDataLine 判断首段里是否已出现 SSE data 行（说明流结构正常，内容交给客户端）。
+func hasStreamDataLine(head []byte) bool {
+	return bytes.HasPrefix(head, []byte("data:")) || bytes.Contains(head, []byte("\ndata:"))
 }
 
 // streamHasContent 判断 SSE 首段里是否出现实际生成内容（content 或 reasoning 有非空增量）。
