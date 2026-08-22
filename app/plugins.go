@@ -45,11 +45,6 @@ var pluginDefs = []pluginDef{
 		Native: "lingxi",
 		Port:   8790, Health: "/health",
 	},
-	{
-		ID: "zcoderemote", Name: "ZCode 多开额度",
-		Native: "zcoderemote",
-		Port:   8792, Health: "/health",
-	},
 }
 
 type pluginState struct {
