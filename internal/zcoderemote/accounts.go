@@ -25,6 +25,8 @@ type Account struct {
 	Enabled     bool   `json:"enabled"`
 	HasLogin    bool   `json:"hasLogin"`
 	Uses        int64  `json:"uses"` // 转发选中次数（round-robin 参考，最低使用优先）
+	ProviderID  string `json:"providerId,omitempty"` // 快照时主窗口启用 plan 的 providerId
+	APIKey      string `json:"apiKey,omitempty"`     // 明文 JWT（落盘保存；List/返回前由 sanitize 清空）
 }
 
 // zcodeExeCandidates 是 ZCode 桌面端 exe 候选路径。
@@ -104,6 +106,10 @@ func (a *Accounts) List() []*Account {
 		out = append(out, a.loadMetaLocked(n))
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Slot < out[j].Slot })
+	// 对外列表不清空的话会被 JSON 序列化泄露明文 JWT——逐份拷贝并抹掉。
+	for _, ac := range out {
+		ac.APIKey = ""
+	}
 	return out
 }
 
@@ -323,6 +329,32 @@ func (a *Accounts) SaveLogin(n int) (*Account, error) {
 		}
 	}
 	ac := a.loadMetaLocked(n)
+	// 3. 捕获主窗口启用 plan 的明文 JWT（provider 注入需要 inline key）。
+	home := ""
+	if h, err := os.UserHomeDir(); err == nil {
+		home = h
+	}
+	if cfg, err := os.ReadFile(filepath.Join(home, ".zcode", "v2", "config.json")); err == nil {
+		var cf struct {
+			Provider map[string]struct {
+				Enabled *bool `json:"enabled"`
+				Options struct {
+					APIKey string `json:"apiKey"`
+				} `json:"options"`
+			} `json:"provider"`
+		}
+		if json.Unmarshal(cfg, &cf) == nil {
+			for pid, p := range cf.Provider {
+				// 只捕获 start-plan 形态（官方赠送额度）且当前启用的
+				if strings.HasSuffix(pid, "start-plan") && p.Enabled != nil && *p.Enabled && p.Options.APIKey != "" {
+					ac.ProviderID = pid
+					ac.APIKey = p.Options.APIKey
+					log.Printf("[zcoderemote] 已捕获 start-plan JWT slot=%d provider=%s", n, pid)
+					break
+				}
+			}
+		}
+	}
 	if len(files) == 0 {
 		ac.HasLogin = false
 		if err := a.saveMetaLocked(ac); err != nil {

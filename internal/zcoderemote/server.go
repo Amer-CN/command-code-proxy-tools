@@ -8,11 +8,13 @@ package zcoderemote
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -177,6 +179,55 @@ func (g *generateTextResult) text() string {
 	return g.Output
 }
 
+// zcodeProviderID / workDir：无头实例注入的官方 provider 与工作目录。
+const (
+	zcodeProviderID = "builtin:zai-start-plan"
+	zcodeBaseURL    = "https://zcode.z.ai/api/v1/zcode-plan/anthropic"
+)
+
+var workDir = func() string {
+	if wd, err := os.Getwd(); err == nil {
+		return wd
+	}
+	return "."
+}()
+
+// ensureProvider 向无头 app-server 注入官方 start-plan provider（每次调用幂等）。
+// apiKey 用 inline 明文 JWT——由「保存登录态」时从主窗口 config.json 捕获。
+func (s *Server) ensureProvider(proc *Proc, ac *Account, ws map[string]any) error {
+	pid := ac.ProviderID
+	if pid == "" {
+		pid = zcodeProviderID
+	}
+	if ac.APIKey == "" {
+		return errors.New("账号未捕获 start-plan JWT：请重新在 ZCode 主窗口登录目标账号后再次保存登录态")
+	}
+	label := pid
+	if strings.HasPrefix(pid, "builtin:bigmodel") {
+		label = "BigModel Start Plan"
+	}
+	params := map[string]any{
+		"workspace": ws,
+		"provider": map[string]any{
+			"providerId":     pid,
+			"kind":           "anthropic",
+			"apiFormat":      "anthropic-messages",
+			"source":         "builtin",
+			"baseURL":        zcodeBaseURL,
+			"apiKey":         map[string]any{"source": "inline", "value": ac.APIKey},
+			"apiKeyRequired": true,
+			"label":          label,
+			"models": []map[string]any{
+				{"modelId": "GLM-5.3", "label": "GLM-5.3", "supportsTools": true},
+				{"modelId": "GLM-5.2", "label": "GLM-5.2", "supportsTools": true},
+				{"modelId": "GLM-5-Turbo", "label": "GLM-5-Turbo"},
+			},
+		},
+	}
+	_, err := proc.Call("workspace/upsertModelProvider", params, 30*time.Second)
+	return err
+}
+
 func (s *Server) handleChat(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	body, _ := io.ReadAll(io.LimitReader(r.Body, 64<<20))
@@ -208,10 +259,22 @@ func (s *Server) handleChat(w http.ResponseWriter, r *http.Request) {
 	for _, m := range req.Messages {
 		msgs = append(msgs, map[string]any{"role": m.Role, "content": flattenContent(m.Content)})
 	}
-	// generateText params 结构未最终确认：按逆向参考构造，真实联调由主智能体做。
-	params := map[string]any{"messages": msgs}
-	if model != "" {
-		params["model"] = model
+	// generateText params schema（2026-08-22 联调实测逆向，见 .work/task-zcode-multi.md）：
+	// workspace{workspacePath,workspaceKey} + modelRef{providerId,modelId} + prompt/messages + querySource 必填。
+	ws := map[string]any{"workspacePath": workDir, "workspaceKey": workDir}
+	params := map[string]any{
+		"workspace":    ws,
+		"modelRef":     map[string]any{"providerId": ac.ProviderID, "modelId": model},
+		"messages":     msgs,
+		"querySource":  "subagent",
+	}
+	// 独立无头 app-server 无 provider 配置：先 upsert 注入官方 start-plan provider
+	// （apiKey 从 slot credentials 的 JWT 不可得——凭据是加密的；upsert 用 credential source
+	// 引用 slot 登录态，无头进程自己解密）。联调确认：inject 后模型目录出现即可调用。
+	if err := s.ensureProvider(proc, ac, ws); err != nil {
+		log.Printf("[zcoderemote] chat model=%s slot=%d 注入 provider 失败: %v", model, ac.Slot, err)
+		writeErr(w, 502, "注入 provider 失败: "+err.Error())
+		return
 	}
 
 	res, err := proc.Call("workspace/generateText", params, 0)

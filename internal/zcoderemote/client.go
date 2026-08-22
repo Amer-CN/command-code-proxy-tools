@@ -11,6 +11,7 @@ package zcoderemote
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -98,13 +99,13 @@ type Proc struct {
 
 	mu      sync.Mutex
 	nextID  int64
-	pending map[int64]chan *wireMsg
+	pending map[string]chan *wireMsg
 	closed  bool
 }
 
 // wireMsg 是 ndjson envelope 的统一表示。
 type wireMsg struct {
-	ID     *int64          `json:"id"`
+	ID     *json.RawMessage `json:"id"`
 	Method string          `json:"method,omitempty"`
 	Params json.RawMessage `json:"params,omitempty"`
 	Result json.RawMessage `json:"result,omitempty"`
@@ -131,7 +132,7 @@ func NewProc(nodeBin string, nodeArg []string, envDir string) *Proc {
 		nodeBin: nodeBin,
 		nodeArg: nodeArg,
 		envDir:  envDir,
-		pending: map[int64]chan *wireMsg{},
+		pending: map[string]chan *wireMsg{},
 	}
 }
 
@@ -209,12 +210,38 @@ func (p *Proc) readLoop(r io.Reader) {
 		line, err := sc.ReadBytes('\n')
 		if len(line) > 0 {
 			var msg wireMsg
-			if json.Unmarshal(trimJSONWhitespace(line), &msg) == nil && msg.ID != nil {
-				ch := p.takePending(*msg.ID)
-				if ch != nil {
-					ch <- &msg
+			if json.Unmarshal(trimJSONWhitespace(line), &msg) == nil {
+				// 服务端反向请求（无 pending id，仅 method 的通知型请求）：
+				// 如 interaction/requestProviderRuntimeHeaders——generateText 在
+				// 发起模型请求前会问客户端"运行时头就绪没"。我们提供 inline key，
+				// 无需额外头，应答 headersApplied=true 放行（实测 2026-08-22 确认
+				// 此应答可推进到真正的模型请求）。
+				if msg.ID != nil && msg.Method != "" && len(msg.Params) > 0 {
+					method := msg.Method
+					rid := *msg.ID
+					switch method {
+					case "interaction/requestProviderRuntimeHeaders":
+						w := p.getWriter()
+						if w != nil {
+	
+							var ridRaw any
+							_ = json.Unmarshal(rid, &ridRaw)
+							b, _ := json.Marshal(map[string]any{"id": ridRaw, "result": map[string]any{"headersApplied": true}})
+							_, _ = w.Write(append(b, '\n'))
+							log.Printf("[zcoderemote] 已应答服务端反向请求 %s headersApplied=true", method)
+						}
+					default:
+						log.Printf("[zcoderemote] 忽略服务端通知 %s", method)
+					}
+					continue
 				}
-				continue
+				if msg.ID != nil {
+					ch := p.takePending(*msg.ID)
+					if ch != nil {
+						ch <- &msg
+					}
+					continue
+				}
 			}
 			// 非 envelope 行（日志等）：忽略
 			log.Printf("[zcoderemote] app-server 输出: %s", truncateStr(string(line), 200))
@@ -226,8 +253,16 @@ func (p *Proc) readLoop(r io.Reader) {
 	}
 }
 
+// getWriter 返回当前 stdin 写入器（供应答服务端反向请求用）。
+func (p *Proc) getWriter() io.Writer {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.stdin
+}
+
 // takePending 取出并删除一个 pending 通道（响应到达时调用）。
-func (p *Proc) takePending(id int64) chan *wireMsg {
+func (p *Proc) takePending(rid json.RawMessage) chan *wireMsg {
+	id := string(bytes.TrimSpace(rid))
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	ch, ok := p.pending[id]
@@ -246,7 +281,7 @@ func (p *Proc) failAll(err error) {
 	}
 	p.closed = true
 	pending := p.pending
-	p.pending = map[int64]chan *wireMsg{}
+	p.pending = map[string]chan *wireMsg{}
 	p.mu.Unlock()
 	for _, ch := range pending {
 		select {
@@ -271,7 +306,7 @@ func (p *Proc) Call(method string, params any, timeout time.Duration) (json.RawM
 		return nil, errors.New("app-server 进程已退出")
 	}
 	p.nextID++
-	id := p.nextID
+	id := strconv.FormatInt(p.nextID, 10)
 	ch := make(chan *wireMsg, 1)
 	p.pending[id] = ch
 	stdin := p.stdin
@@ -281,18 +316,19 @@ func (p *Proc) Call(method string, params any, timeout time.Duration) (json.RawM
 	if params != nil {
 		b, err := json.Marshal(params)
 		if err != nil {
-			p.takePending(id)
+			p.takePending(json.RawMessage(id))
 			return nil, fmt.Errorf("序列化 params 失败: %w", err)
 		}
 		rawParams = b
 	}
-	req, err := json.Marshal(wireMsg{ID: &id, Method: method, Params: rawParams})
+	idRaw := json.RawMessage(id)
+	req, err := json.Marshal(wireMsg{ID: &idRaw, Method: method, Params: rawParams})
 	if err != nil {
-		p.takePending(id)
+		p.takePending(json.RawMessage(id))
 		return nil, err
 	}
 	if stdin == nil {
-		p.takePending(id)
+		p.takePending(json.RawMessage(id))
 		return nil, errors.New("app-server stdin 不可用")
 	}
 
@@ -307,11 +343,11 @@ func (p *Proc) Call(method string, params any, timeout time.Duration) (json.RawM
 	select {
 	case err := <-werr:
 		if err != nil {
-			p.takePending(id)
+			p.takePending(json.RawMessage(id))
 			return nil, fmt.Errorf("发送请求失败: %w", err)
 		}
 	case <-time.After(5 * time.Second):
-		p.takePending(id)
+		p.takePending(json.RawMessage(id))
 		return nil, errors.New("发送请求超时（stdin 堵塞）")
 	}
 
@@ -325,7 +361,7 @@ func (p *Proc) Call(method string, params any, timeout time.Duration) (json.RawM
 		}
 		return msg.Result, nil
 	case <-timer.C:
-		p.takePending(id)
+		p.takePending(json.RawMessage(id))
 		return nil, fmt.Errorf("zcode 请求 %s 超时（%s）", method, timeout)
 	}
 }
