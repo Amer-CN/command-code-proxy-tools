@@ -289,20 +289,46 @@ func (a *Accounts) LaunchLoginInstance(n int) error {
 }
 
 // SaveLogin 校验 slot 登录态（凭据文件含 oauth token）并落盘 hasLogin。
+//
+// 登录态来源（按优先级）：
+//  1. slot 目录自己的 .zcode/v2/credentials.json（Electron 单实例锁导致独立
+//     登录窗口无法存活，此路径通常为空）；
+//  2. 主程序 home 目录 C:/Users/<user>/.zcode/v2/credentials.json ——用户
+//     在当前 ZCode 主窗口里切换登录为目标账号后，把主目录登录态快照进 slot。
+//     这是实际可行路径：加密 key 派生自 homedir，主目录快照天然可被无头
+//     app-server（同 homedir 启动）解密。
 func (a *Accounts) SaveLogin(n int) (*Account, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if !dirExists(a.slotDir(n)) {
 		return nil, fmt.Errorf("账号 %d 不存在", n)
 	}
+	// 1. slot 自有凭据
 	files := a.credentialFiles(a.slotDir(n))
+	// 2. 主目录登录态快照（优先：Electron 单实例锁下唯一可行来源）
+	if len(files) == 0 {
+		home := ""
+		if h, err := os.UserHomeDir(); err == nil {
+			home = h
+		}
+		mainCred := filepath.Join(home, ".zcode", "v2", "credentials.json")
+		if b, err := os.ReadFile(mainCred); err == nil && hasZcodeToken(b) {
+			dst := filepath.Join(a.slotDir(n), ".zcode", "v2", "credentials.json")
+			if err := os.MkdirAll(filepath.Dir(dst), 0o755); err == nil {
+				if err := os.WriteFile(dst, b, 0o600); err == nil {
+					files = append(files, dst)
+					log.Printf("[zcoderemote] 已从主程序登录态快照 slot=%d", n)
+				}
+			}
+		}
+	}
 	ac := a.loadMetaLocked(n)
 	if len(files) == 0 {
 		ac.HasLogin = false
 		if err := a.saveMetaLocked(ac); err != nil {
 			return nil, err
 		}
-		return nil, errors.New("未检测到登录态：请先启动登录实例并在其中登录目标账号，完成后再保存")
+		return nil, errors.New("未检测到登录态：请先在 ZCode 主窗口登录目标账号（可切换账号），再点击保存")
 	}
 	ac.HasLogin = true
 	ac.LastLoginAt = time.Now().Format(time.RFC3339)
