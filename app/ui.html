@@ -1412,6 +1412,9 @@ async function copyText(text, label){
 
 /* ---------------- 状态机 ---------------- */
 const S = { phase:"boot", uptime:0, autostart:false, modelsLoaded:false, healFail:0, modelFilter:"go", viewModelIds:[] };
+// userStopped：用户主动停堆标记——主动停止后不再自愈（只有异常退出才自动点火），
+// 修复"停堆后被自愈看门狗拉起、永远关不掉"。重新点火时清除。
+S.userStopped = false;
 const PH = {
   idle:     {big:"系统待命",   sub:"CORE STANDBY",            pill:"待命",   pillCls:"idle",     reactor:"",     bigCls:""},
   starting: {big:"点火序列",   sub:"IGNITION SEQUENCE",       pill:"点火中", pillCls:"starting", reactor:"st",   bigCls:"glow-st"},
@@ -1449,11 +1452,12 @@ async function toggleCore(){
     const takingOver = S.phase === "external";
     setPhase("stopping"); log("sys", takingOver ? "接管外部实例 · 停止后台代理…" : "停堆序列已触发…");
     const r = await call("Stop");
-    if (r.ok){ log("ok", r.msg || "代理核心已停堆"); toast("info", takingOver ? "已接管 · 可再次点击启动" : "核心已停堆",""); S.modelsLoaded = false; }
+    if (r.ok){ log("ok", r.msg || "代理核心已停堆"); toast("info", takingOver ? "已接管 · 可再次点击启动" : "核心已停堆",""); S.modelsLoaded = false; S.userStopped = true; }
     else { log("err", "停止失败: " + (r.msg||"未知错误")); toast("err","停止失败", r.msg||""); }
     await pollState();
   } else {
     setPhase("starting"); log("sys", "点火序列启动 · 装载代理核心…");
+    S.userStopped = false;   // 手动点火恢复自愈资格
     const key = $("apiKey").value.trim();
     const r = await call("Start", key);
     if (r.ok){
@@ -1697,7 +1701,8 @@ async function pollState(){
   if (st.closeHintDismissed === false){ $("closeBanner").style.display = "block"; }
   // 自愈：代理曾成功运行过，但现在端口无健康响应（异常退出/被杀）→ 自动重新点火。
   // 连续 3 次失败则停止自动尝试（避免死循环），提示手动处理。
-  if (st.startedOnce && !st.running && !st.external){
+  // 用户主动停堆（userStopped）时不自愈——否则停完又被拉起，永远关不掉。
+  if (st.startedOnce && !st.running && !st.external && !S.userStopped){
     if (!S.healFail){ S.healFail = 0; }
     if (S.healFail < 3){
       S.healFail++;
