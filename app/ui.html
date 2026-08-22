@@ -2523,10 +2523,12 @@ async function loadPluginModels(V){
       return;
     }
     // 增量更新：列表没变不重建 DOM（否则每次轮询 chips 动画重播 → 闪烁）
-    if (V.lastModels && V.lastModels === ids.join("")){
+    const key = ids.join("\u0001");
+    const firstLoad = !V.lastModels;
+    if (V.lastModels && V.lastModels === key){
       return;
     }
-    V.lastModels = ids.join("");
+    V.lastModels = key;
     $(V.pfx+"ModelCount").textContent = ids.length + " MODELS";
     $(V.pfx+"Models").textContent = ids.length;
     pSet(V, "StModels", ids.length);
@@ -2552,7 +2554,8 @@ async function loadPluginModels(V){
       g.appendChild(chips); box.appendChild(g);
     });
     box.onmousemove = trackModelTip;   // 浮窗跟随（同主界面）
-    plog(V, "net", "模型矩阵已装载 · " + ids.length + " 个模型");
+    // 只首次装载时写日志：轮询期间列表抖动（团结上游实时列表）重建 DOM 但不再刷日志
+    if (firstLoad) plog(V, "net", "模型矩阵已装载 · " + ids.length + " 个模型");
   }catch(e){
     $(V.pfx+"ModelCount").textContent = "ERR";
     $(V.pfx+"ModelList").innerHTML = '<div class="models-empty">// 拉取失败: '+
@@ -2680,7 +2683,12 @@ async function loadPluginStats(V){
         if (bs.length){
           entries = bs.map(function(s){ return { name: s.label, sum: s.points||0, calls: s.requests||0 }; });
           mode = "points";
-          plog(V, "net", "积分消耗 TOP 已装载 · " + bs.length + " 个来源（官方数据）");
+          // 防抖：来源+积分没变化不写日志（轮询 3s 一刷，避免刷屏）。用独立键，不动 lastBarsKey
+          const topKey = bs.map(function(s){ return s.label+":"+Math.round(s.points||0); }).join(",");
+          if (V.lastTopKey !== topKey){
+            V.lastTopKey = topKey;
+            plog(V, "net", "积分消耗 TOP 已装载 · " + bs.length + " 个来源（官方数据）");
+          }
         }
       }catch(e){}
       // quota 暂时失败（缓存过期竞态/超时）但上一轮已是积分模式 → 保持当前渲染，
