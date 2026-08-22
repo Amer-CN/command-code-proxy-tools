@@ -263,8 +263,9 @@ func (a *Accounts) Toggle(n int) (*Account, error) {
 	return ac, nil
 }
 
-// LaunchLoginInstance 用 USERPROFILE=<slot目录> + --user-data-dir=<slot>/appdata
-// 启动完整 ZCode 桌面端（detached，日志不接管），用户在里面登录目标账号。
+// LaunchLoginInstance 用破锁三件套环境变量 + --user-data-dir 启动完整 ZCode
+// 桌面端第二实例（detached，日志不接管），用户在其中登录/切换目标账号，
+// 登录态由该实例自然落盘到 slot。
 func (a *Accounts) LaunchLoginInstance(n int) error {
 	exe, err := DetectZCodeExe()
 	if err != nil {
@@ -280,11 +281,16 @@ func (a *Accounts) LaunchLoginInstance(n int) error {
 		return fmt.Errorf("创建 appdata 目录失败: %w", err)
 	}
 	cmd := exec.Command(exe, "--user-data-dir="+filepath.Join(slot, "appdata"))
-	// ZCODE_DATA_BASE_DIR：ZCode 官方环境变量（内核 credentials 路径优先读它，
-	// 见 zcode.cjs: baseDir ?? env.ZCODE_DATA_BASE_DIR ?? homedir()）。
-	// 注意不传 USERPROFILE：凭据加密 key 的 fallback 派生自
-	// platform:homedir:username，改 homedir 会让登录态无法解密。
-	cmd.Env = append(os.Environ(), "ZCODE_DATA_BASE_DIR="+slot)
+	// 破锁+隔离环境变量（app.asar 逆向）：
+	//   - ZCODE_DESKTOP_USER_DATA_DIR → userData（单实例锁的 key，不同即双开）
+	//   - ZCODE_DATA_BASE_DIR         → 内核 credentials/config 落点
+	// 不传 ZCODE_DESKTOP_HOME_DIR：home 变化会影响凭据加密 key 的派生
+	// （platform:homedir:username），导致新窗口解不开 slot 里保存的登录态、
+	// 一直显示未登录。同理不传 USERPROFILE。
+	cmd.Env = append(os.Environ(),
+		"ZCODE_DESKTOP_USER_DATA_DIR="+filepath.Join(slot, "appdata"),
+		"ZCODE_DATA_BASE_DIR="+slot,
+	)
 	// detached：Windows 下不设 SysProcAttr，Start 后立即返回（GUI 进程独立生存）。
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("启动 ZCode 登录实例失败: %w", err)
@@ -297,8 +303,8 @@ func (a *Accounts) LaunchLoginInstance(n int) error {
 // SaveLogin 校验 slot 登录态（凭据文件含 oauth token）并落盘 hasLogin。
 //
 // 登录态来源（按优先级）：
-//  1. slot 目录自己的 .zcode/v2/credentials.json（Electron 单实例锁导致独立
-//     登录窗口无法存活，此路径通常为空）；
+//  1. slot 目录自己的 .zcode/v2/credentials.json（账号实例窗口登录后自动
+//     落盘——ZCODE_DATA_BASE_DIR 隔离，主路径）；
 //  2. 主程序 home 目录 C:/Users/<user>/.zcode/v2/credentials.json ——用户
 //     在当前 ZCode 主窗口里切换登录为目标账号后，把主目录登录态快照进 slot。
 //     这是实际可行路径：加密 key 派生自 homedir，主目录快照天然可被无头
