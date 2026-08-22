@@ -414,6 +414,21 @@ body{
   font-family:var(--mono);transition:all .2s}
 .vtab:hover{color:#c9ecff;border-color:var(--cyan)}
 .vtab.active{color:var(--green);border-color:rgba(64,220,140,.5);background:rgba(64,220,140,.08)}
+/* ============ ZCode 多开视图（简洁卡片风） ============ */
+.zc-steps{font-size:12px;color:#8fa3c8;line-height:1.9}
+.zc-steps b{color:#c9ecff;font-weight:600}
+.zc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.zc-card{border:1px solid var(--line2);border-radius:8px;padding:12px 14px;
+  background:rgba(13,20,36,.6);display:flex;flex-direction:column;gap:8px}
+.zc-card-top{display:flex;align-items:center;gap:8px}
+.zc-card-name{font-size:13px;font-weight:600;color:#c9ecff;letter-spacing:1px}
+.zc-badge{font-family:var(--mono);font-size:10px;letter-spacing:1px;padding:2px 8px;
+  border-radius:10px;border:1px solid var(--line2);color:var(--dim)}
+.zc-badge.off{color:#ffd77a;border-color:rgba(255,179,0,.45);background:rgba(255,179,0,.08)}
+.zc-badge.on{color:#8affd8;border-color:rgba(0,255,163,.4);background:rgba(0,255,163,.08)}
+.zc-card-meta{font-size:11px;color:var(--dim);font-family:var(--mono);line-height:1.7}
+.zc-card-btns{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
+.zc-card-btns .ibtn{font-size:11px;padding:4px 10px}
 /* 插件核心球（左栏状态球，运行时呼吸发光） */
 .plug-orb{width:86px;height:86px;border-radius:50%;margin:6px auto 12px;position:relative;
   display:flex;align-items:center;justify-content:center;
@@ -722,6 +737,7 @@ body{
   <button class="vtab" data-view="codebuddy">WORKBUDDY</button>
   <button class="vtab" data-view="notion">NOTION</button>
   <button class="vtab" data-view="lingxi">灵犀</button>
+  <button class="vtab" data-view="zcode">多开</button>
 </div>
 <!-- ============ 插件视图（与 COMMAND 完全同构：克隆主界面 DOM，仅换数据源） ============ -->
 <div class="app" id="viewTuanjie" style="display:none">
@@ -1192,6 +1208,70 @@ body{
       <div class="bars-wrap" id="lxBars"><div class="bars-empty">// 插件启动后自动统计流经数据</div></div>
     </section>
   </footer>
+</div>
+
+
+<!-- ============ ZCode 多开视图（简洁卡片风，无反应堆） ============ -->
+<div class="app" id="viewZcode" style="display:none">
+  <header class="topbar">
+    <div class="logo">
+      <svg viewBox="0 0 100 100" fill="none">
+        <g class="hex"><polygon points="50,4 90,27 90,73 50,96 10,73 10,27" stroke="#7fe6ff" stroke-width="3"/></g>
+        <path d="M54 30 L40 54 L50 54 L46 70 L62 46 L51 46 Z" fill="#7fe6ff"/>
+      </svg>
+    </div>
+    <div class="title-wrap">
+      <div class="title">ZCODE · 多开额度</div>
+      <div class="subtitle">多账号 slot 聚合 · 本地 OpenAI 兼容链路</div>
+    </div>
+    <div class="spacer"></div>
+    <span class="ver-chip" title="插件标识">PLUGIN <b>ZCODEREMOTE</b></span>
+    <button class="gear-btn" title="设置" onclick="openSettings()" aria-label="设置">⚙</button>
+    <div class="state-pill idle" id="zcPill"><span class="pdot"></span><span id="zcPillText">待命</span></div>
+  </header>
+
+  <main class="deck">
+    <!-- 说明 + endpoint -->
+    <section class="panel tilt" style="grid-column:1/-1">
+      <div class="p-head"><span class="tick"></span><h2>使用说明</h2><span class="en">HOW TO</span></div>
+      <div class="p-body">
+        <div class="zc-steps">三步接入其他账号的赠送额度：<b>① 点「+ 添加账号」</b> → <b>② 启动登录实例，在弹出的独立 ZCode 里登录目标账号</b> → <b>③ 回到本页点「保存登录态」并启用</b>。之后 127.0.0.1:8792 会自动聚合所有已启用账号的额度。</div>
+        <div class="field-row" style="margin-top:12px">
+          <span class="f-label">接口地址<span class="en">BASE URL</span></span>
+          <input class="holo-input" id="zcBaseUrl" readonly value="http://127.0.0.1:8792/v1" title="点击复制">
+          <button class="ibtn" id="zcCopyUrl">复制</button>
+          <button class="ibtn" id="zcRefresh">↻ 刷新</button>
+        </div>
+        <div class="field-row">
+          <span class="f-label">API 密钥<span class="en">API KEY</span></span>
+          <div class="key-wrap"><input class="holo-input" value="无需密钥 · 客户端任意值即可" readonly></div>
+          <button class="ibtn">—</button>
+        </div>
+        <div class="field-row">
+          <span class="f-label">可用模型<span class="en">MODELS</span></span>
+          <input class="holo-input" value="GLM-5.3 · GLM-5.2 · GLM-5-Turbo" readonly><button class="ibtn">—</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 账号卡片网格 -->
+    <section class="panel tilt" style="grid-column:1/-1">
+      <div class="p-head"><span class="tick"></span><h2>账号列表</h2><span class="en" id="zcCount">0 个</span>
+        <button class="ibtn" id="zcAddBtn" style="margin-left:10px">+ 添加账号</button></div>
+      <div class="p-body">
+        <div class="zc-grid" id="zcGrid"><div class="models-empty">// 暂无账号 · 点右上「+ 添加账号」创建</div></div>
+      </div>
+    </section>
+
+    <!-- 日志 -->
+    <section class="panel console-panel tilt" style="grid-column:1/-1">
+      <div class="console-head">
+        <h2>插件日志</h2><span class="en">PLUGIN LOG</span>
+        <div class="console-actions"><button class="cbtn" id="zcClearLog">清空</button></div>
+      </div>
+      <div class="log-stream" id="zcLog"></div>
+    </section>
+  </main>
 </div>
 
 
@@ -2130,7 +2210,7 @@ function hideModelTip(){
 
 
 /* ---------------- 视图切换（全开源，无门禁） ---------------- */
-// 当前视图：command（默认）/ tuanjie / codebuddy / notion / lingxi
+// 当前视图：command（默认）/ tuanjie / codebuddy / notion / lingxi / zcode
 let curView = "command";
 function switchView(v){
   curView = v;
@@ -2139,8 +2219,10 @@ function switchView(v){
   $("viewCodebuddy").style.display = v === "codebuddy" ? "" : "none";
   $("viewNotion").style.display = v === "notion" ? "" : "none";
   $("viewLingxi").style.display = v === "lingxi" ? "" : "none";
+  $("viewZcode").style.display = v === "zcode" ? "" : "none";
   document.querySelectorAll(".vtab").forEach(t=>t.classList.toggle("active", t.dataset.view === v));
-  if (v !== "command") refreshPluginView(v);
+  if (v !== "command" && v !== "zcode") refreshPluginView(v);
+  if (v === "zcode") refreshZcodeView();
 }
 document.querySelectorAll(".vtab").forEach(t=>{ t.onclick = ()=>switchView(t.dataset.view); });
 // ESC 快速返回 COMMAND 视图
@@ -2154,7 +2236,8 @@ function initTabs(){
   if (vt) vt.style.display = "";
   if (!window._pluginPoll){
     window._pluginPoll = setInterval(()=>{
-      if (curView !== "command") refreshPluginView(curView);
+      if (curView === "zcode") refreshZcodeView();
+      else if (curView !== "command") refreshPluginView(curView);
     }, 3000);
   }
 }
@@ -2332,6 +2415,153 @@ function renderTuanjiePacing(st){
     }
     btn.disabled = false;
   };
+})();
+
+// ============ ZCode 多开视图（端口 8792，账号卡片 + 3s 轮询） ============
+const ZC = { port: 8792, running: false, lastCardsKey: null };
+
+// zcLog：多开视图日志行（复用 log-line 样式）
+function zcLog(level, msg){ logInto($("zcLog"), level, String(msg)); }
+
+// refreshZcodeView：轮询入口——插件状态 + 账号卡片。
+async function refreshZcodeView(){
+  // 1. 插件状态灯（与其他视图同判定：PluginList + 端口健康）
+  const list = await call("PluginList");
+  const p = Array.isArray(list) ? list.find(x=>x.id === "zcoderemote") : null;
+  const running = !!(p && p.healthy);
+  ZC.running = running;
+  const pill = $("zcPill"), pillText = $("zcPillText");
+  if (pill && pillText){
+    pill.className = "state-pill " + (running ? "running" : "idle");
+    pillText.textContent = running ? "运行中" : "待命";
+  }
+  // 2. 账号卡片（仅在插件运行时拉取；卡片集不变时增量更新）
+  if (!running){
+    $("zcCount").textContent = "0 个";
+    $("zcGrid").innerHTML = '<div class="models-empty">// 插件未启动：点开「设置」或用底部 COMMAND 视图启动 ZCode 多开插件</div>';
+    return;
+  }
+  try{
+    const [st, acc] = await Promise.all([
+      (await fetch("http://127.0.0.1:"+ZC.port+"/health")).json(),
+      (await fetch("http://127.0.0.1:"+ZC.port+"/accounts")).json()
+    ]);
+    renderZcodeHealth(st);
+    renderZcodeAccounts((acc && acc.accounts) || []);
+  }catch(e){ /* 瞬时抖动忽略，下轮重试 */ }
+}
+
+// renderZcodeHealth：把 /health 的账号数/启用数/ZCode 探测错误反映到计数。
+function renderZcodeHealth(st){
+  if (st && st.status === "error" && st.message){
+    zcLog("err", st.message);
+    $("zcCount").textContent = "环境异常";
+    return;
+  }
+  const n = st && typeof st.accounts === "number" ? st.accounts : 0;
+  const en = st && typeof st.enabled === "number" ? st.enabled : 0;
+  $("zcCount").textContent = n + " 个 · " + en + " 启用";
+}
+
+// renderZcodeAccounts：账号卡片网格（集合不变时复用 DOM，只更新徽章/按钮态）。
+function renderZcodeAccounts(accounts){
+  const grid = $("zcGrid");
+  const key = accounts.map(a=>a.slot).join(";");
+  if (ZC.lastCardsKey !== key){
+    ZC.lastCardsKey = key;
+    grid.innerHTML = "";
+    if (!accounts.length){
+      grid.innerHTML = '<div class="models-empty">// 暂无账号 · 点右上「+ 添加账号」创建</div>';
+      return;
+    }
+    accounts.forEach(function(ac){
+      const card = document.createElement("div");
+      card.className = "zc-card";
+      card.innerHTML =
+        '<div class="zc-card-top"><span class="zc-card-name"></span><span class="zc-badge"></span></div>'+
+        '<div class="zc-card-meta"></div>'+
+        '<div class="zc-card-btns">'+
+          '<button class="ibtn" data-act="login">启动登录实例</button>'+
+          '<button class="ibtn" data-act="save">保存登录态</button>'+
+          '<button class="ibtn" data-act="toggle">启停</button>'+
+          '<button class="ibtn" data-act="del">删除</button>'+
+        '</div>';
+      card.querySelector(".zc-card-name").textContent = ac.name || ("账号 " + ac.slot);
+      const meta = card.querySelector(".zc-card-meta");
+      const badge = card.querySelector(".zc-badge");
+      card._els = { meta: meta, badge: badge, btns: {} };
+      card.querySelectorAll(".zc-card-btns .ibtn").forEach(function(b){
+        card._els.btns[b.dataset.act] = b;
+        b.onclick = ()=>zcAccountAction(ac.slot, b.dataset.act, ac);
+      });
+      grid.appendChild(card);
+    });
+  }
+  // 增量更新（徽章/元信息/按钮文案）
+  const cards = grid.children;
+  accounts.forEach(function(ac, i){
+    const card = cards[i];
+    if (!card || !card._els) return;
+    const badge = card._els.badge;
+    if (!ac.hasLogin){ badge.textContent = "未登录"; badge.className = "zc-badge"; }
+    else if (ac.enabled){ badge.textContent = "已登录 · 启用"; badge.className = "zc-badge on"; }
+    else { badge.textContent = "已登录 · 停用"; badge.className = "zc-badge off"; }
+    const loginAt = ac.lastLoginAt ? String(ac.lastLoginAt).slice(0,10) : "—";
+    card._els.meta.textContent = "slot " + ac.slot + " · 使用 " + (ac.uses||0) + " 次 · 最近登录 " + loginAt;
+    const tg = card._els.btns.toggle;
+    if (tg) tg.textContent = ac.enabled ? "停用" : "启用";
+  });
+}
+
+// zcAccountAction：卡片按钮交互（登录实例/保存/启停/删除）。
+async function zcAccountAction(slot, act, ac){
+  const base = "http://127.0.0.1:"+ZC.port+"/accounts/"+slot;
+  try{
+    if (act === "login"){
+      zcLog("sys", "启动登录实例（slot "+slot+"）…");
+      const r = await (await fetch(base+"/login-instance", {method:"POST"})).json();
+      if (r.ok){ zcLog("ok", "已启动独立 ZCode，请在其中登录目标账号"); toast("ok", "已启动", "已启动独立 ZCode，请在其中登录目标账号"); }
+      else zcLog("err", "启动失败: " + (r.error && r.error.message || ""));
+    } else if (act === "save"){
+      zcLog("sys", "校验登录态（slot "+slot+"）…");
+      const r = await (await fetch(base+"/save", {method:"POST"})).json();
+      if (r.ok){ zcLog("ok", "登录态已保存（slot "+slot+"）"); toast("ok", "已保存", "账号 " + slot + " 登录态已登记"); }
+      else { zcLog("err", "保存失败: " + (r.error && r.error.message || "")); toast("err", "未检测到登录态", r.error && r.error.message || "请先启动登录实例并登录"); }
+    } else if (act === "toggle"){
+      const r = await (await fetch(base+"/toggle", {method:"POST"})).json();
+      if (r.ok){ zcLog("sys", "账号 " + slot + " 已" + (r.account.enabled ? "启用" : "停用")); }
+      else zcLog("err", "切换失败: " + (r.error && r.error.message || ""));
+    } else if (act === "del"){
+      if (!confirm("确定删除账号 " + slot + "（" + (ac && ac.name || "") + "）？登录态与目录将一并删除，不可恢复。")) return;
+      const r = await (await fetch(base, {method:"DELETE"})).json();
+      if (r.ok){ zcLog("sys", "账号 " + slot + " 已删除"); ZC.lastCardsKey = null; }
+      else zcLog("err", "删除失败: " + (r.error && r.error.message || ""));
+    }
+  }catch(e){
+    zcLog("err", "操作失败（插件未启动？）: " + e);
+  }
+  refreshZcodeView();
+}
+
+// 多开视图静态按钮绑定（添加/复制/刷新/清空）。
+(function(){
+  const add = $("zcAddBtn");
+  if (add) add.onclick = async function(){
+    try{
+      const r = await (await fetch("http://127.0.0.1:"+ZC.port+"/accounts", {method:"POST"})).json();
+      if (r.ok){ zcLog("ok", "已创建 " + (r.account && r.account.name || "新账号") + "（slot " + (r.account && r.account.slot) + "）"); ZC.lastCardsKey = null; }
+      else zcLog("err", "创建失败: " + (r.error && r.error.message || ""));
+    }catch(e){ zcLog("err", "创建失败（插件未启动？）"); }
+    refreshZcodeView();
+  };
+  const cp = $("zcCopyUrl");
+  if (cp) cp.onclick = function(){ copyText($("zcBaseUrl").value, "Base URL"); };
+  const bu = $("zcBaseUrl");
+  if (bu) bu.onclick = function(){ copyText(bu.value, "Base URL"); };
+  const rf = $("zcRefresh");
+  if (rf) rf.onclick = function(){ ZC.lastCardsKey = null; refreshZcodeView(); zcLog("sys", "手动刷新账号列表"); };
+  const cl = $("zcClearLog");
+  if (cl) cl.onclick = function(){ $("zcLog").innerHTML = ""; zcLog("sys", "日志已清空"); };
 })();
 
 // 模型矩阵（厂商/系列分组 + chips，同主界面逻辑）

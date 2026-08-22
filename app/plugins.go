@@ -26,7 +26,7 @@ var pluginDefs = []pluginDef{
 	{
 		ID: "tuanjie", Name: "团结 Cowork (Codely)",
 		Native: "tuanjie",
-		Port: 8788, Health: "/health",
+		Port:   8788, Health: "/health",
 	},
 	{
 		ID: "codebuddy", Name: "WorkBuddy / CodeBuddy",
@@ -38,12 +38,17 @@ var pluginDefs = []pluginDef{
 	{
 		ID: "notion", Name: "Notion AI",
 		Native: "notion",
-		Port: 8789, Health: "/health",
+		Port:   8789, Health: "/health",
 	},
 	{
 		ID: "lingxi", Name: "WPS 灵犀",
 		Native: "lingxi",
-		Port: 8790, Health: "/health",
+		Port:   8790, Health: "/health",
+	},
+	{
+		ID: "zcoderemote", Name: "ZCode 多开额度",
+		Native: "zcoderemote",
+		Port:   8792, Health: "/health",
 	},
 }
 
@@ -136,8 +141,8 @@ func (a *app) pluginList() []map[string]any {
 		alive := present && httpOK(a.pluginHealthURL(d))
 		out = append(out, map[string]any{
 			"id": d.ID, "name": d.Name, "port": d.Port,
-			"native": d.Native != "",
-			"dir":    filepath.Join("plugins", d.Dir),
+			"native":  d.Native != "",
+			"dir":     filepath.Join("plugins", d.Dir),
 			"present": present,
 			"running": running, "healthy": alive,
 			"lastErr": lastErr, "log": filepath.Base(a.pluginLog(d)),
