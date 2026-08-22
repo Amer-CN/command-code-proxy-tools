@@ -161,7 +161,11 @@ func (p *Proc) Start() error {
 	cmd := exec.Command(p.nodeBin, p.nodeArg...)
 	cmd.Env = os.Environ()
 	if p.envDir != "" {
-		cmd.Env = append(cmd.Env, "USERPROFILE="+p.envDir)
+		// ZCODE_DATA_BASE_DIR：官方环境变量，credentials 路径优先读它
+		// （zcode.cjs: baseDir ?? env.ZCODE_DATA_BASE_DIR ?? homedir()）。
+		// 不传 USERPROFILE：凭据加密 key fallback 派生自 platform:homedir:username，
+		// 改 homedir 会导致登录态解密失败。
+		cmd.Env = append(cmd.Env, "ZCODE_DATA_BASE_DIR="+p.envDir)
 	}
 	stdin, err := cmd.StdinPipe()
 	if err != nil {

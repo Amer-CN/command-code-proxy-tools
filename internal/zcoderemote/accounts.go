@@ -274,8 +274,11 @@ func (a *Accounts) LaunchLoginInstance(n int) error {
 		return fmt.Errorf("创建 appdata 目录失败: %w", err)
 	}
 	cmd := exec.Command(exe, "--user-data-dir="+filepath.Join(slot, "appdata"))
-	// USERPROFILE 重定向：app-server/桌面端在该目录下自建全新 .zcode 结构。
-	cmd.Env = append(os.Environ(), "USERPROFILE="+slot)
+	// ZCODE_DATA_BASE_DIR：ZCode 官方环境变量（内核 credentials 路径优先读它，
+	// 见 zcode.cjs: baseDir ?? env.ZCODE_DATA_BASE_DIR ?? homedir()）。
+	// 注意不传 USERPROFILE：凭据加密 key 的 fallback 派生自
+	// platform:homedir:username，改 homedir 会让登录态无法解密。
+	cmd.Env = append(os.Environ(), "ZCODE_DATA_BASE_DIR="+slot)
 	// detached：Windows 下不设 SysProcAttr，Start 后立即返回（GUI 进程独立生存）。
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("启动 ZCode 登录实例失败: %w", err)
